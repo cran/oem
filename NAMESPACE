@@ -1,0 +1,13 @@
+## load the dunamic library
+useDynLib(oem, .registration = TRUE)
+import(RcppArmadillo, Rcpp)
+
+## export the main function
+export(oemfit)
+
+## define S3 methods
+S3method(print,   oemfit)
+S3method(predict, oemfit)
+S3method(plot,    oemfit)
+S3method(coef,    oemfit)
+
