@@ -1,5 +1,5 @@
-20ec7852976bc623b849aec014564c82 *DESCRIPTION
-25bb8df12cfebeadc0ca02b5373ec0ea *NAMESPACE
+656b1ccf3d22ddb3dbe9a7e1037b23b6 *DESCRIPTION
+012baf0a94e67479740c16c2cf1badb3 *NAMESPACE
 42719d92fc003023b5378cfebb72da34 *R/coef.oemfit.R
 5f01e5cc6005e6265282233388ebe390 *R/cv.oemfit.R
 1efdcd113043ba4a6938b1c86f7a67c3 *R/getmin.R
@@ -21,5 +21,5 @@ c04b57805b3f1ec46d719368f3513e29 *man/print.oemfit.Rd
 0e9e06245487e40cf271cd62c1afab3e *src/Makevars.win
 a4ae30fbbdec860bce44f25068cc2192 *src/Makevars00
 6bfd14cff22bc17ccfc30cd883f9569e *src/debug.h
-0b450e1cd40b2e73d6df59a177175c89 *src/oem.cpp
+5b549fb29ae7f050ae07fe35a64e008d *src/oem.cpp
 4c82a83954ae14d73602c53c9c5e0c99 *src/oem.h

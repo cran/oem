@@ -2,13 +2,13 @@
 // #include "debug.h"
 
 int powerIter = 0;
-bool cond;   // which oem method to use
+bool oem_cond;   // which oem method to use
 
 // class definitions
 penalty::penalty(arma::mat& input) : blockX(input) {
   numVariables = input.n_cols;
   // apply power to a smaller square matrix
-  if (cond) 
+  if (oem_cond) 
     A = blockX.t() * blockX / sampleSize;
   else
     A = blockX * blockX.t() / sampleSize;
@@ -34,7 +34,7 @@ oem::oem(int p, int maxIter_, int num,
     penObj.push_back(tmp);
   }
   // reuse resid for different purpose
-  if ( cond )
+  if ( oem_cond )
     resid = penObj[0].getX().t() * response / sampleSize;
   else
     resid = response;
@@ -113,7 +113,7 @@ arma::colvec oem::calc (double lambda,
       values(pos++) = objective(lambda, beta);
     colvec orig = beta;
     // determine which oem approach to use
-    if (cond) {
+    if (oem_cond) {
       colvec prev = beta;
       colvec u = resid + (penObj[0].getEigen() * eye<mat>(numVariables, numVariables)
 			  - penObj[0].getA()) * prev;
@@ -184,7 +184,7 @@ RcppExport SEXP oemfit(SEXP X,        // design matrix
 		       SEXP numGroup,
 		       SEXP alpha_,
 		       SEXP evaluate_,
-		       SEXP condition) 
+		       SEXP oem_condition) 
 {
   using namespace Rcpp;
   using namespace arma;
@@ -214,7 +214,7 @@ RcppExport SEXP oemfit(SEXP X,        // design matrix
 
     Function proctime("proc.time");
     NumericVector t1 = proctime();
-    cond = INTEGER(condition)[0];
+    oem_cond = INTEGER(oem_condition)[0];
     oem oemObj(p, INTEGER(maxIter)[0], INTEGER(numGroup)[0],
 	       Xa, Ya, INTEGER(method)[0]);
     NumericVector t2 = proctime();
@@ -239,7 +239,7 @@ RcppExport SEXP oemfit(SEXP X,        // design matrix
 			Named("eigen") = eigenvalues,
 			Named("object") = values,
 			Named("alpha") = alpha_,
-			Named("cond") = cond,
+			Named("cond") = oem_cond,
 			Named("power") = powerIter,
 			Named("time1") = t2[2] - t1[2],
 			Named("time2") = t3[2] - t2[2]);

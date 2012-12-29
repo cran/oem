@@ -1,6 +1,6 @@
 ## load the dunamic library
 useDynLib(oem, .registration = TRUE)
-import(RcppArmadillo, Rcpp)
+import(Rcpp)
 
 ## export the main function
 export(oemfit)
