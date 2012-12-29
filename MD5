@@ -1,4 +1,4 @@
-ba27a796d3c95da05558708d3c8a5820 *DESCRIPTION
+20ec7852976bc623b849aec014564c82 *DESCRIPTION
 25bb8df12cfebeadc0ca02b5373ec0ea *NAMESPACE
 42719d92fc003023b5378cfebb72da34 *R/coef.oemfit.R
 5f01e5cc6005e6265282233388ebe390 *R/cv.oemfit.R
@@ -8,8 +8,8 @@ a7a82104123fc66077798aba379c7f4f *R/oem.R
 dde764b9b23cc58431cea5a2ff545d20 *R/plot.oemfit.R
 107e52bfe9802ea0117d5fd03846db87 *R/predict.oemfit.R
 3247fa25348f5238b638155ad2d05c59 *R/print.oemfit.R
-f59ca20befd61dc31b6510964aedfdb2 *data/calHousing.rda
-129eb1c512ef333698b0c437fc2ca7e5 *data/example9.rda
+87e98a207fc8a5baba384f1a95a5dda4 *data/calHousing.rda
+0289d4ac91edb84f8fb7a00eb69e4478 *data/example9.rda
 0c69fec10f9139a7dc326c50d50fc950 *man/calHousing.Rd
 c5cef530d73053887ae65bc556365818 *man/example9.Rd
 39f82dcc6dfeac61e25ee6fda7a01947 *man/oem-package.Rd
@@ -17,8 +17,9 @@ b71084d4b8b2fb1bcccbd64bfbc72e2d *man/oemfit.Rd
 739f1d7357a7bd20043d90fbb3072193 *man/plot.oemfit.Rd
 036e31b27079f3cae13e44c182177b47 *man/predict.oemfit.Rd
 c04b57805b3f1ec46d719368f3513e29 *man/print.oemfit.Rd
-bd767b8d11b8b06faa906aadd98b069d *src/Makevars
+28703457b9fe311422847d2b0ef1a433 *src/Makevars
 0e9e06245487e40cf271cd62c1afab3e *src/Makevars.win
+a4ae30fbbdec860bce44f25068cc2192 *src/Makevars00
 6bfd14cff22bc17ccfc30cd883f9569e *src/debug.h
 0b450e1cd40b2e73d6df59a177175c89 *src/oem.cpp
-aecacd36155adcc8267f39223315a27e *src/oem.h
+4c82a83954ae14d73602c53c9c5e0c99 *src/oem.h

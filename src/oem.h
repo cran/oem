@@ -1,6 +1,7 @@
 #ifndef _OEM_HPP
 #define _OEM_HPP
-#include <Rcpp.h>
+
+//#include <Rcpp.h>
 #include <RcppArmadillo.h>
 #include <vector>
 #include <iostream>
