@@ -1,4 +1,4 @@
-fc843baccf4962335e2d80749ce87d29 *DESCRIPTION
+086dd9a79bea357e77d036f0fb59e98a *DESCRIPTION
 beee5a7452dd36a14c88985b699328f8 *NAMESPACE
 bd366f7b8a23ab3a2eec518798321b65 *R/big_oem.R
 86712a9a743dfa1c05c1b359a44ab9b4 *R/cv_oem.R
@@ -8,11 +8,11 @@ bd366f7b8a23ab3a2eec518798321b65 *R/big_oem.R
 0a8db4a1242d77665a111a7f92770824 *R/oem_xtx.R
 494289bfedc8cd8056907e458f95a132 *R/oem_xval.R
 09220044aed68c921275ce302cd7fd0d *R/utils.R
-2db9094afd02cabd22e550503b0c7496 *README.md
+60ac78827817407af0fc8a4f77c65ca9 *README.md
 0ad0a58d1e188c78d9870797ae95a1b5 *build/vignette.rds
 6f4a69784984648355aa7c28d6c7705f *inst/doc/oem_vignette.R
 bd4a3565b02e3d86572b334e8b0a3e98 *inst/doc/oem_vignette.Rmd
-0940ee708c29802ac756b2e6e2a841bc *inst/doc/oem_vignette.html
+6182e7c27c87c75ccc9ce1dfa7c83b9a *inst/doc/oem_vignette.html
 cf394e9fb3386adff2adb143bf9caa2a *man/big.oem.Rd
 1c9cbd39a850bd40b21e428ae0de4a87 *man/cv.oem.Rd
 6d109c6a321e764e80851019a9db00c7 *man/deprecated.Rd
@@ -55,11 +55,11 @@ a76dcfb54575eb4031a5751d8c5814b5 *src/lanczos.h
 5ad5b7503c9b8b0a19c3d28ba7c3a5e3 *src/oem_big.cpp
 7321707c43f6ae42ccda7754e8247f65 *src/oem_big.h
 64189a55323eb492f260c2d35865e422 *src/oem_dense.cpp
-551bb04d7e54b5c5247cec81a287296d *src/oem_dense.h
+e9f7302ed6851f687435a95a0b97761b *src/oem_dense.h
 fa442ea5879a368e56b3452ab33fec76 *src/oem_logistic_dense.cpp
-f51c935d2a479192adf567479c9e8031 *src/oem_logistic_dense.h
-db37d3a1537e3e8317f14f9aa186b15c *src/oem_logistic_sparse.cpp
-73886f11e5ef8a5e8b36a9a884ef2f6a *src/oem_logistic_sparse.h
+f7ec087157e430ff7041742cd81ede16 *src/oem_logistic_dense.h
+49c4d62a8ad950c2890853dd0734bf09 *src/oem_logistic_sparse.cpp
+a989f3692af0e80fa5d0f1c7fbd3273a *src/oem_logistic_sparse.h
 9e9c5fd49962f6e51ce052033c720667 *src/oem_sparse.cpp
 ce30f7edf89af738bd0f81d94267452e *src/oem_sparse.h
 f755aa9b9775c94a7470b1fb9782f0d9 *src/oem_xtx.cpp
