@@ -1,7 +1,7 @@
 Package: oem
 Type: Package
 Title: Orthogonalizing EM
-Version: 2.0.2
+Version: 2.0.3
 Date: 2016-10-25
 Authors@R: c(
     person("Bin", "Dai", , "bdai@uwalumni.com", role = c("aut")),
@@ -21,9 +21,9 @@ RoxygenNote: 5.0.1
 Suggests: knitr, rmarkdown
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2016-10-25 14:53:14 UTC; Jared
+Packaged: 2016-10-26 01:19:49 UTC; Jared
 Author: Bin Dai [aut],
   Jared Huling [aut, cre],
   Yixuan Qiu [ctb]
 Repository: CRAN
-Date/Publication: 2016-10-25 20:32:22
+Date/Publication: 2016-10-26 10:37:50
