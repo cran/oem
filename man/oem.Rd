@@ -10,8 +10,8 @@ oem(x, y, family = c("gaussian", "binomial"), penalty = c("elastic.net",
   alpha = 1, gamma = 3, groups = numeric(0), penalty.factor = NULL,
   group.weights = NULL, standardize = TRUE, intercept = TRUE,
   maxit = 500L, tol = 1e-07, irls.maxit = 100L, irls.tol = 0.001,
-  ncores = -1, compute.loss = FALSE, hessian.type = c("full",
-  "upper.bound"))
+  accelerate = FALSE, ncores = -1, compute.loss = FALSE,
+  hessian.type = c("full", "upper.bound"))
 }
 \arguments{
 \item{x}{input matrix or \code{CsparseMatrix} object of the \pkg{Matrix} package. 
@@ -73,6 +73,8 @@ slightly different for a sparse matrix object and a dense matrix object}
 
 \item{irls.tol}{convergence tolerance for IRLS iterations. Only used if \code{family != "gaussian"}}
 
+\item{accelerate}{boolean argument. Whether or not to use Nesterov acceleration with adaptive restarting}
+
 \item{ncores}{Integer scalar that specifies the number of threads to be used}
 
 \item{compute.loss}{should the loss be computed for each estimated tuning parameter? Defaults to \code{FALSE}. Setting
@@ -132,7 +134,7 @@ y <- rbinom(n.obs, 1, prob = 1 / (1 + exp(-x \%*\% true.beta)))
 system.time(res <- oem(x, y, intercept = FALSE, 
                        penalty = "lasso", 
                        family = "binomial", 
-                       nlambda = 25,
+                       nlambda = 10,
                        irls.tol = 1e-3, tol = 1e-8))
 
 
@@ -145,14 +147,14 @@ ys <- rbinom(n.obs * 2, 1, prob = 1 / (1 + exp(-x \%*\% true.beta)))
 system.time(res.gr <- oem(x.dense, ys, intercept = FALSE, 
                           penalty = "grp.lasso", 
                           family = "binomial", 
-                          nlambda = 15,
+                          nlambda = 10,
                           groups = rep(1:5, each = 10), 
                           irls.tol = 1e-3, tol = 1e-8))
                           
 system.time(res.gr.s <- oem(xs, ys, intercept = FALSE, 
                             penalty = "grp.lasso", 
                             family = "binomial", 
-                            nlambda = 15,
+                            nlambda = 10,
                             groups = rep(1:5, each = 10), 
                             irls.tol = 1e-3, tol = 1e-8))
                             

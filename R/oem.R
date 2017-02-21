@@ -41,6 +41,7 @@
 #' @param tol convergence tolerance for OEM iterations
 #' @param irls.maxit integer. Maximum number of IRLS iterations
 #' @param irls.tol convergence tolerance for IRLS iterations. Only used if \code{family != "gaussian"}
+#' @param accelerate boolean argument. Whether or not to use Nesterov acceleration with adaptive restarting 
 #' @param ncores Integer scalar that specifies the number of threads to be used
 #' @param compute.loss should the loss be computed for each estimated tuning parameter? Defaults to \code{FALSE}. Setting
 #' to \code{TRUE} will dramatically increase computational time
@@ -50,7 +51,7 @@
 #' @return An object with S3 class "oem" 
 #' @references Shifeng Xiong, Bin Dai, Jared Huling, and Peter Z. G. Qian. Orthogonalizing
 #' EM: A design-based least squares algorithm. Technometrics, 58(3):285-293, 2016. \url{http://amstat.tandfonline.com/doi/abs/10.1080/00401706.2015.1054436}
-#' @useDynLib oem
+#' @useDynLib oem, .registration=TRUE
 #' @import Rcpp
 #' @import Matrix
 #' @import foreach
@@ -99,7 +100,7 @@
 #' system.time(res <- oem(x, y, intercept = FALSE, 
 #'                        penalty = "lasso", 
 #'                        family = "binomial", 
-#'                        nlambda = 25,
+#'                        nlambda = 10,
 #'                        irls.tol = 1e-3, tol = 1e-8))
 #' 
 #' 
@@ -112,14 +113,14 @@
 #' system.time(res.gr <- oem(x.dense, ys, intercept = FALSE, 
 #'                           penalty = "grp.lasso", 
 #'                           family = "binomial", 
-#'                           nlambda = 15,
+#'                           nlambda = 10,
 #'                           groups = rep(1:5, each = 10), 
 #'                           irls.tol = 1e-3, tol = 1e-8))
 #'                           
 #' system.time(res.gr.s <- oem(xs, ys, intercept = FALSE, 
 #'                             penalty = "grp.lasso", 
 #'                             family = "binomial", 
-#'                             nlambda = 15,
+#'                             nlambda = 10,
 #'                             groups = rep(1:5, each = 10), 
 #'                             irls.tol = 1e-3, tol = 1e-8))
 #'                             
@@ -144,6 +145,7 @@ oem <- function(x,
                 tol = 1e-7,
                 irls.maxit = 100L,
                 irls.tol = 1e-3,
+                accelerate = FALSE,
                 ncores = -1,
                 compute.loss = FALSE,
                 hessian.type = c("full", "upper.bound")) 
@@ -305,6 +307,7 @@ oem <- function(x,
     intercept     <- as.logical(intercept)
     compute.loss  <- as.logical(compute.loss)
     ncores        <- as.integer(ncores[1])
+    accelerate    <- as.logical(accelerate)
     
     if(maxit <= 0 | irls.maxit <= 0)
     {
@@ -321,7 +324,8 @@ oem <- function(x,
                     irls_maxit   = irls.maxit,
                     irls_tol     = irls.tol,
                     ncores       = ncores,
-                    hessian.type = hessian.type)
+                    hessian.type = hessian.type,
+                    accelerate   = accelerate)
     
     res <- switch(family,
                   "gaussian" = oemfit.gaussian(is.sparse,
