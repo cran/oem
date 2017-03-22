@@ -3,8 +3,10 @@
 
 #' Orthogonalizing EM
 #'
-#' @param x input matrix or \code{CsparseMatrix} objects of the \pkg{Matrix} (sparse not yet implemented. 
-#' Each row is an observation, each column corresponds to a covariate
+#' @param x input matrix of dimension n x p or \code{CsparseMatrix} objects of the \pkg{Matrix} (sparse not yet implemented. 
+#' Each row is an observation, each column corresponds to a covariate. The cv.oem() function
+#' is optimized for n >> p settings and may be very slow when p > n, so please use other packages
+#' such as \code{glmnet}, \code{ncvreg}, \code{grpreg}, or \code{gglasso} when p > n or p approx n.
 #' @param y numeric response vector of length nobs.
 #' @param penalty Specification of penalty type in lowercase letters. Choices include \code{"lasso"}, 
 #' \code{"ols"} (Ordinary least squares, no penaly), \code{"elastic.net"}, \code{"scad"}, \code{"mcp"}, \code{"grp.lasso"}
@@ -49,13 +51,34 @@
 #' layout(matrix(1:2, ncol = 2))
 #' plot(fit)
 #' plot(fit, which.model = 2)
-cv.oem <- function (x, y, penalty = c("elastic.net", "lasso", "ols", "mcp", "scad", "grp.lasso"),
+cv.oem <- function (x, y, penalty = c("elastic.net", 
+                                      "lasso", 
+                                      "ols", 
+                                      "mcp",           "scad", 
+                                      "mcp.net",       "scad.net",
+                                      "grp.lasso",     "grp.lasso.net",
+                                      "grp.mcp",       "grp.scad",
+                                      "grp.mcp.net",   "grp.scad.net",
+                                      "sparse.grp.lasso"),
                     weights = numeric(0), lambda = NULL, 
                     type.measure = c("mse", "deviance", "class", "auc", "mae"), nfolds = 10, foldid = NULL, 
                     grouped = TRUE, keep = FALSE, parallel = FALSE, ncores = -1, ...) 
 {
     ## code modified from "glmnet" package
-    penalty <- match.arg(penalty, several.ok = TRUE)
+    
+    this.call    <- match.call()
+
+    ## don't default to fitting all penalties!
+    ## only allow multiple penalties if the user
+    ## explicitly chooses multiple penalties
+    if ("penalty" %in% names(this.call))
+    {
+        penalty  <- match.arg(penalty, several.ok = TRUE)
+    } else 
+    {
+        penalty  <- match.arg(penalty, several.ok = FALSE)
+    }
+    
     if (missing(type.measure)) 
         type.measure = "default"
     else type.measure = match.arg(type.measure)
@@ -93,7 +116,7 @@ cv.oem <- function (x, y, penalty = c("elastic.net", "lasso", "ols", "mcp", "sca
     #}
     #else 
     nz = lapply(1:length(oem.object$beta), function(m) 
-        sapply(predict(oem.object, type = "nonzero", which.model = m), length) - 1
+        sapply(predict(oem.object, type = "nonzero", which.model = m), length)
         )
     if (is.null(foldid)) 
         foldid = sample(rep(seq(nfolds), length = N))

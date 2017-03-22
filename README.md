@@ -1,11 +1,16 @@
+
 [![version](http://www.r-pkg.org/badges/version/oem)](https://cran.r-project.org/package=oem)
 
 ### Build Status
 |  OS             | Build           |
 |-----------------|-----------------|
-| Linux x86_64    | [![Build Status](https://travis-ci.org/jaredhuling/oem.svg?branch=master)](https://travis-ci.org/jaredhuling/oem)      | 
-| OSX             | [![Build Status](https://travis-ci.org/jaredhuling/oem.svg?branch=master)](https://travis-ci.org/jaredhuling/oem)          |
+| Linux x86_64 / OSX   | [![Build Status](https://travis-ci.org/jaredhuling/oem.svg?branch=master)](https://travis-ci.org/jaredhuling/oem)      | 
 | Windows x86_64     | [![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/github/jaredhuling/oem?branch=master&svg=true)](https://ci.appveyor.com/project/jaredhuling/oem)     |
+
+
+
+
+
 
 
 
@@ -17,13 +22,9 @@ The oem package provides estimaton for various penalized linear models using the
 
 Install using the **devtools** package (RcppEigen must be installed first as well):
 
+
 ```r
 devtools::install_github("jaredhuling/oem")
-```
-
-or by downloading from CRAN:
-```r
-install.packages("oem")
 ```
 
 or by cloning and building using `R CMD INSTALL`
@@ -66,8 +67,8 @@ microbenchmark(
 ```
 ## Unit: seconds
 ##           expr      min       lq     mean   median       uq      max neval
-##  glmnet[lasso] 7.292307 7.383917 7.658757 7.580808 7.671030 8.365722     5
-##     oem[lasso] 2.040648 2.047586 2.113338 2.063423 2.078822 2.336209     5
+##  glmnet[lasso] 7.443072 7.465033 7.511237 7.473748 7.517085 7.657246     5
+##     oem[lasso] 2.040831 2.108731 2.119171 2.125527 2.127454 2.193313     5
 ##  cld
 ##    b
 ##   a
@@ -162,25 +163,37 @@ microbenchmark(
 )
 ```
 
+```
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+```
 
 ```
 ## Unit: milliseconds
 ##            expr       min        lq      mean    median        uq
-##  sparsenet[mcp] 1740.2711 1740.4014 1745.6558 1746.0448 1749.9996
-##        oem[mcp]  156.1490  156.3148  157.4937  156.6029  158.7574
-##     ncvreg[mcp] 8332.3995 8376.8815 8405.0775 8387.1697 8451.3359
-##       plus[mcp] 1704.8241 1723.2366 1756.4895 1727.7677 1796.3541
-##       oem[scad]  132.5754  132.5845  133.0697  132.6441  133.2717
-##    ncvreg[scad] 8527.7561 8595.5140 8637.7294 8670.6568 8692.7131
-##      plus[scad] 1886.8247 1901.8046 1982.6517 1961.2432 2041.5625
-##        max neval   cld
-##  1751.5619     5  b   
-##   159.6443     5 a    
-##  8477.6007     5    d 
-##  1830.2648     5  b   
-##   134.2728     5 a    
-##  8702.0070     5     e
-##  2121.8234     5   c
+##  sparsenet[mcp] 1732.5257 1738.7517 1748.5446 1740.5216 1751.3204
+##        oem[mcp]  158.6103  159.1179  160.3924  159.9310  160.9344
+##     ncvreg[mcp] 8264.7436 8480.7807 8508.0602 8500.5591 8625.1292
+##       plus[mcp] 1692.1115 1742.6563 1765.5701 1780.0216 1801.3493
+##       oem[scad]  134.1860  134.3585  137.3976  134.9959  135.2000
+##    ncvreg[scad] 8568.0948 8646.1719 8746.7105 8733.7292 8785.1230
+##      plus[scad] 1799.8596 1826.1522 1941.5508 1980.3372 1984.9401
+##        max neval  cld
+##  1779.6036     5  b  
+##   163.3683     5 a   
+##  8669.0884     5   c 
+##  1811.7120     5  b  
+##   148.2476     5 a   
+##  9000.4334     5    d
+##  2116.4648     5  b
 ```
 
 ```r
@@ -233,6 +246,8 @@ microbenchmark(
                                             eps = 1e-8)},
     "oem[grp.lasso]"    = {res2 <- oem(x, y,  
                                        groups = groups,
+                                       intercept = FALSE,
+                                       standardize = FALSE,
                                        penalty = "grp.lasso",
                                        lambda = grp.lam,
                                        tol = 1e-10)},
@@ -251,15 +266,15 @@ microbenchmark(
 ```
 ## Unit: milliseconds
 ##                 expr        min         lq       mean     median
-##   gglasso[grp.lasso] 1758.24982 1760.96713 1764.63203 1767.35226
-##       oem[grp.lasso]   79.10119   79.33289   79.85101   79.80578
-##  grplasso[grp.lasso] 2575.35601 2602.75647 2609.91463 2613.97859
-##    grpreg[grp.lasso] 1036.92605 1041.19859 1042.27122 1041.82265
+##   gglasso[grp.lasso] 1835.67253 1854.43731 1879.21554 1886.08074
+##       oem[grp.lasso]   83.56342   83.65776   84.20327   84.03552
+##  grplasso[grp.lasso] 2921.92955 2934.10441 2946.44845 2943.06267
+##    grpreg[grp.lasso] 1185.90070 1186.58831 1193.20823 1196.86218
 ##          uq        max neval  cld
-##  1767.53028 1769.06064     5   c 
-##    80.06472   80.95049     5 a   
-##  2623.16826 2634.31381     5    d
-##  1044.23010 1047.17872     5  b
+##  1886.19205 1933.69509     5   c 
+##    84.80917   84.95048     5 a   
+##  2948.67170 2984.47393     5    d
+##  1197.55532 1199.13461     5  b
 ```
 
 ```r
@@ -272,8 +287,8 @@ diffs
 
 ```
 ##                      abs diff
-## oem and gglasso  8.341970e-05
-## oem and grplasso 8.341973e-05
+## oem and gglasso  1.729379e-06
+## oem and grplasso 4.828369e-08
 ```
 
 #### Bigger Group Lasso Example
@@ -298,10 +313,11 @@ system.time(res <- oem(x, y, penalty = "grp.lasso",
 
 ```
 ##    user  system elapsed 
-##    3.17    0.17    3.34
+##    3.26    0.22    3.49
 ```
 
 ```r
+# memory usage is out of control here.
 # oem uses approximately 1/3 of the memory
 system.time(res2 <- grpreg(x, y, group = groups, 
                            eps = 1e-10, lambda = res$lambda))
@@ -309,7 +325,7 @@ system.time(res2 <- grpreg(x, y, group = groups,
 
 ```
 ##    user  system elapsed 
-##   73.89    1.44   75.83
+##   74.74    1.81   77.27
 ```
 
 ```r
@@ -364,11 +380,11 @@ microbenchmark(
 ```
 ## Unit: milliseconds
 ##                     expr      min       lq     mean   median       uq
-##               oem[lasso] 236.5429 236.9945 244.4077 238.2651 249.9254
-##  oem[lasso/mcp/scad/ols] 249.6645 252.7753 260.2248 252.9913 265.3522
+##               oem[lasso] 219.9073 220.1758 223.4888 223.8072 224.3511
+##  oem[lasso/mcp/scad/ols] 238.4752 238.4823 247.5485 249.0822 249.1572
 ##       max neval cld
-##  260.3107     5   a
-##  280.3408     5   a
+##  229.2023     5  a 
+##  262.5458     5   b
 ```
 
 ```r
@@ -376,10 +392,14 @@ microbenchmark(
 #
 
 layout(matrix(1:4, ncol=2, byrow = TRUE))
-plot(res2, which.model = 1, lwd = 2)
-plot(res2, which.model = 2, lwd = 2)
-plot(res2, which.model = 3, lwd = 2)
-plot(res2, which.model = 4, lwd = 2)
+plot(res2, which.model = 1, lwd = 2,
+     xvar = "lambda")
+plot(res2, which.model = 2, lwd = 2,
+     xvar = "lambda")
+plot(res2, which.model = 3, lwd = 2,
+     xvar = "lambda")
+plot(res2, which.model = 4, lwd = 2,
+     xvar = "lambda")
 ```
 
-<img src="README_files/figure-html/mult-1.png" title="" alt="" style="display: block; margin: auto;" />
+<img src="vignettes/mult-1.png" style="display: block; margin: auto;" />

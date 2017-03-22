@@ -7,14 +7,15 @@
 \title{Plot method for Orthogonalizing EM fitted objects}
 \usage{
 \method{plot}{oem}(x, which.model = 1, xvar = c("norm", "lambda",
-  "loglambda", "dev"), labsize = 0.6, xlab = iname, ylab = "Coefficients",
-  ...)
+  "loglambda", "dev"), labsize = 0.6, xlab = iname, ylab = NULL,
+  main = x$penalty[which.model], ...)
 
 \method{plot}{cv.oem}(x, which.model = 1, sign.lambda = 1, ...)
 
 \method{plot}{xval.oem}(x, which.model = 1, type = c("cv", "coefficients"),
   xvar = c("norm", "lambda", "loglambda", "dev"), labsize = 0.6,
-  xlab = iname, ylab = "Coefficients", sign.lambda = 1, ...)
+  xlab = iname, ylab = NULL, main = x$penalty[which.model],
+  sign.lambda = 1, ...)
 }
 \arguments{
 \item{x}{fitted "oem" model object}
@@ -31,6 +32,8 @@ against the percent deviance explained.}
 \item{xlab}{label for x-axis}
 
 \item{ylab}{label for y-axis}
+
+\item{main}{main title for plot}
 
 \item{...}{other graphical parameters for the plot}
 
@@ -75,7 +78,7 @@ fit <- cv.oem(x = x, y = y, penalty = c("lasso", "grp.lasso"), groups = rep(1:10
 
 layout(matrix(1:2, ncol = 2))
 plot(fit, which.model = 1)
-plot(fit, which.model = 2)
+plot(fit, which.model = "grp.lasso")
 
 set.seed(123)
 n.obs <- 1e4

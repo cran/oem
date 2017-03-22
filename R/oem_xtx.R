@@ -9,8 +9,27 @@
 #' It is highly recommended to scale by the number of rows in \code{x}.
 #' @param family \code{"gaussian"} for least squares problems, \code{"binomial"} for binary response. 
 #' (only \code{gaussian} implemented currently)
-#' @param penalty Specification of penalty type in lowercase letters. Choices include \code{"lasso"}, 
-#' \code{"ols"} (Ordinary least squares, no penaly), \code{"elastic.net"}, \code{"scad"}, \code{"mcp"}, \code{"grp.lasso"}
+#' @param penalty Specification of penalty type. Choices include:
+#' \itemize{
+#'    \item{\code{"elastic.net"}}{ - elastic net penalty, extra parameters: \code{"alpha"}}
+#'    \item{\code{"lasso"}}{ - lasso penalty}
+#'    \item{\code{"ols"}}{ - ordinary least squares}
+#'    \item{\code{"mcp"}}{ - minimax concave penalty, extra parameters: \code{"gamma"}}
+#'    \item{\code{"scad"}}{ - smoothly clipped absolute deviation, extra parameters: \code{"gamma"}}
+#'    \item{\code{"mcp.net"}}{ - minimax concave penalty + l2 penalty, extra parameters: 
+#'    \code{"gamma"}, \code{"alpha"}}
+#'    \item{\code{"scad.net"}}{ - smoothly clipped absolute deviation + l2 penalty, extra parameters: 
+#'    \code{"gamma"}, \code{"alpha"}}
+#'    \item{\code{"grp.lasso"}}{ - group lasso penalty}
+#'    \item{\code{"grp.lasso.net"}}{ - group lasso penalty + l2 penalty, extra parameters: \code{"alpha"}}
+#'    \item{\code{"grp.mcp"}}{ - group minimax concave penalty, extra parameters: \code{"gamma"}}
+#'    \item{\code{"grp.scad"}}{ - group smoothly clipped absolute deviation, extra parameters: \code{"gamma"}}
+#'    \item{\code{"grp.mcp.net"}}{ - group minimax concave penalty + l2 penalty, extra parameters: \code{"gamma"}, \code{"alpha"}}
+#'    \item{\code{"grp.scad.net"}}{ - group smoothly clipped absolute deviation + l2 penalty, extra parameters: \code{"gamma"}, \code{"alpha"}}
+#'    \item{\code{"sparse.grp.lasso"}}{ - sparse group lasso penalty (group lasso + lasso), extra parameters: \code{"tau"}}
+#' }
+#' Careful consideration is required for the group lasso, group MCP, and group SCAD penalties. Groups as specified by the \code{groups} argument 
+#' should be chosen in a sensible manner.
 #' @param lambda A user supplied lambda sequence. By default, the program computes
 #' its own lambda sequence based on \code{nlambda} and \code{lambda.min.ratio}. Supplying
 #' a value of lambda overrides this.
@@ -18,8 +37,10 @@
 #' @param lambda.min.ratio Smallest value for lambda, as a fraction of \code{lambda.max}, the (data derived) entry
 #' value (i.e. the smallest value for which all coefficients are zero). The default
 #' depends on the sample size nobs relative to the number of variables nvars. The default is 0.0001
-#' @param alpha mixing value for elastic.net. penalty applied is (1 - alpha) * (ridge penalty) + alpha * (lasso penalty)
+#' @param alpha mixing value for \code{elastic.net}, \code{mcp.net}, \code{scad.net}, \code{grp.mcp.net}, \code{grp.scad.net}. 
+#' penalty applied is ((1 - alpha)/alpha) * (ridge penalty) + (lasso/mcp/mcp/grp.lasso penalty)
 #' @param gamma tuning parameter for SCAD and MCP penalties. must be >= 1
+#' @param tau mixing value for \code{sparse.grp.lasso}. penalty applied is (1 - tau) * (group lasso penalty) + tau * (lasso penalty)
 #' @param groups A vector of describing the grouping of the coefficients. See the example below. All unpenalized variables
 #' should be put in group 0
 #' @param scale.factor of length \code{nvars === ncol(xtx) == length(xty)} for scaling columns of \code{x}. The standard deviation
@@ -53,7 +74,13 @@
 #' y <- rnorm(n.obs, sd = 3) + x %*% true.beta
 #' 
 #' fit <- oem(x = x, y = y, 
-#'            penalty = c("lasso", "grp.lasso"), 
+#'            penalty = c("lasso", "elastic.net", 
+#'                         "ols", 
+#'                         "mcp",       "scad", 
+#'                         "mcp.net",   "scad.net",
+#'                         "grp.lasso", "grp.lasso.net",
+#'                         "grp.mcp",   "grp.scad",
+#'                         "sparse.grp.lasso"), 
 #'            standardize = FALSE, intercept = FALSE,
 #'            groups = rep(1:20, each = 5))
 #'            
@@ -61,7 +88,13 @@
 #' xty <- crossprod(x, y) / n.obs
 #' 
 #' fit.xtx <- oem.xtx(xtx = xtx, xty = xty, 
-#'                    penalty = c("lasso", "grp.lasso"), 
+#'                    penalty = c("lasso", "elastic.net", 
+#'                                "ols", 
+#'                                "mcp",       "scad", 
+#'                                "mcp.net",   "scad.net",
+#'                                "grp.lasso", "grp.lasso.net",
+#'                                "grp.mcp",   "grp.scad",
+#'                                "sparse.grp.lasso"), 
 #'                    groups = rep(1:20, each = 5))    
 #'                    
 #' max(abs(fit$beta[[1]][-1,] - fit.xtx$beta[[1]]))
@@ -74,12 +107,21 @@
 oem.xtx <- function(xtx, 
                     xty, 
                     family = c("gaussian", "binomial"),
-                    penalty = c("elastic.net", "lasso", "ols", "mcp", "scad", "grp.lasso"),
+                    penalty = c("elastic.net", 
+                                "lasso", 
+                                "ols", 
+                                "mcp",           "scad", 
+                                "mcp.net",       "scad.net",
+                                "grp.lasso",     "grp.lasso.net",
+                                "grp.mcp",       "grp.scad",
+                                "grp.mcp.net",   "grp.scad.net",
+                                "sparse.grp.lasso"),
                     lambda = numeric(0),
                     nlambda = 100L,
                     lambda.min.ratio = NULL,
                     alpha = 1,
                     gamma = 3,
+                    tau   = 0.5,
                     groups = numeric(0),
                     scale.factor   = numeric(0),
                     penalty.factor = NULL,
@@ -89,8 +131,20 @@ oem.xtx <- function(xtx,
                     irls.maxit = 100L,
                     irls.tol = 1e-3) 
 {
+    this.call    <- match.call()
+    
     family       <- match.arg(family)
-    penalty      <- match.arg(penalty, several.ok = TRUE)
+    
+    ## don't default to fitting all penalties!
+    ## only allow multiple penalties if the user
+    ## explicitly chooses multiple penalties
+    if ("penalty" %in% names(this.call))
+    {
+        penalty  <- match.arg(penalty, several.ok = TRUE)
+    } else 
+    {
+        penalty  <- match.arg(penalty, several.ok = FALSE)
+    }
     
     dims <- dim(xtx)
     
@@ -121,7 +175,7 @@ oem.xtx <- function(xtx,
     }
     penalty.factor <- drop(penalty.factor)
     
-    if (any(penalty == "grp.lasso")) {
+    if (any(grep("grp", penalty) > 0)) {
         if (length(groups) != p) {
             stop("groups must have same length as number of columns in x")
         }
@@ -188,6 +242,7 @@ oem.xtx <- function(xtx,
     nlambda       <- as.integer(nlambda)
     alpha         <- as.double(alpha)
     gamma         <- as.double(gamma)
+    tau           <- as.double(tau)
     tol           <- as.double(tol)
     irls.tol      <- as.double(irls.tol)
     irls.maxit    <- as.integer(irls.maxit)
@@ -226,6 +281,7 @@ oem.xtx <- function(xtx,
                                                    lambda.min.ratio,
                                                    alpha,
                                                    gamma,
+                                                   tau,
                                                    scale.factor,
                                                    penalty.factor,
                                                    options),
@@ -240,6 +296,7 @@ oem.xtx <- function(xtx,
                                                    lambda.min.ratio,
                                                    alpha,
                                                    gamma,
+                                                   tau,
                                                    scale.factor,
                                                    penalty.factor,
                                                    options)
@@ -251,8 +308,10 @@ oem.xtx <- function(xtx,
         rownames(res$beta[[i]]) <- varnames
     }
     
+    names(res$beta) <- penalty
+    
     nz <- lapply(1:length(res$beta), function(m) 
-        sapply(predict.oem(res, type = "nonzero", which.model = m), length) - 1
+        sapply(predict.oem(res, type = "nonzero", which.model = m), length)
     )
     
     res$nvars    <- p
@@ -278,6 +337,7 @@ oemfit.xtx.gaussian <- function(xtx,
                                 lambda.min.ratio,
                                 alpha,
                                 gamma,
+                                tau,
                                 scale.factor,
                                 penalty.factor,
                                 options)
@@ -295,6 +355,7 @@ oemfit.xtx.gaussian <- function(xtx,
                  lambda.min.ratio,
                  alpha,
                  gamma,
+                 tau,
                  scale.factor,
                  penalty.factor,
                  options,
@@ -317,6 +378,7 @@ oemfit.xtx.binomial <- function(xtx,
                                 lambda.min.ratio,
                                 alpha,
                                 gamma,
+                                tau,
                                 scale.factor,
                                 penalty.factor,
                                 options)
@@ -335,6 +397,7 @@ oemfit.xtx.binomial <- function(xtx,
                  lambda.min.ratio,
                  alpha,
                  gamma,
+                 tau,
                  scale.factor,
                  penalty.factor,
                  options,

@@ -5,14 +5,17 @@
 \title{Orthogonalizing EM}
 \usage{
 cv.oem(x, y, penalty = c("elastic.net", "lasso", "ols", "mcp", "scad",
-  "grp.lasso"), weights = numeric(0), lambda = NULL,
-  type.measure = c("mse", "deviance", "class", "auc", "mae"), nfolds = 10,
-  foldid = NULL, grouped = TRUE, keep = FALSE, parallel = FALSE,
-  ncores = -1, ...)
+  "mcp.net", "scad.net", "grp.lasso", "grp.lasso.net", "grp.mcp", "grp.scad",
+  "grp.mcp.net", "grp.scad.net", "sparse.grp.lasso"), weights = numeric(0),
+  lambda = NULL, type.measure = c("mse", "deviance", "class", "auc", "mae"),
+  nfolds = 10, foldid = NULL, grouped = TRUE, keep = FALSE,
+  parallel = FALSE, ncores = -1, ...)
 }
 \arguments{
-\item{x}{input matrix or \code{CsparseMatrix} objects of the \pkg{Matrix} (sparse not yet implemented. 
-Each row is an observation, each column corresponds to a covariate}
+\item{x}{input matrix of dimension n x p or \code{CsparseMatrix} objects of the \pkg{Matrix} (sparse not yet implemented. 
+Each row is an observation, each column corresponds to a covariate. The cv.oem() function
+is optimized for n >> p settings and may be very slow when p > n, so please use other packages
+such as \code{glmnet}, \code{ncvreg}, \code{grpreg}, or \code{gglasso} when p > n or p approx n.}
 
 \item{y}{numeric response vector of length nobs.}
 

@@ -109,6 +109,8 @@ public:
         return i + 1;
     }
     
+    virtual void init_oem() {}
+    
     virtual void init_xtx(bool add_int_) {}
     virtual void update_xtx(int fold_) {}
     virtual double compute_lambda_zero() { return 0; }
@@ -120,7 +122,8 @@ public:
     
     virtual double get_loss() { return 1e99; }
     
-    virtual void init(double lambda_, std::string penalty_) {}
+    virtual void init(double lambda_, std::string penalty_,
+                      double alpha_, double gamma_, double tau_) {}
     virtual void init_warm(double lambda_) {}
 };
 

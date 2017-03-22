@@ -38,27 +38,33 @@ protected:
     VectorXd group_weights;     // group lasso penalty multiplication factors 
     int penalty_factor_size;    // size of penalty_factor vector
     int XXdim;                  // dimension of XX (different if n > p and p >= n)
+    int XXdimCalc;
     Vector XY;                  // X'Y
     MatrixXd XX;                // X'X
     MatrixXd A;                 // A = d * I - X'X
     double d;                   // d value (largest eigenvalue of X'X)
-    double alpha;               // alpha = mixing parameter for elastic net
-    double gamma;               // extra tuning parameter for mcp/scad
     bool default_group_weights; // do we need to compute default group weights?
     
     
     std::vector<std::vector<int> > grp_idx; // vector of vectors of the indexes for all members of each group
-    std::string penalty;       // penalty specified
+    std::string penalty;        // penalty specified
     
-    double lambda;             // L1 penalty
-    double lambda0;            // minimum lambda to make coefficients all zero
+    double lambda;              // L1 penalty
+    double lambda0;             // minimum lambda to make coefficients all zero
+    double alpha;               // alpha = mixing parameter for elastic net
+    double gamma;               // extra tuning parameter for mcp/scad
+    double tau;                 // mixing parameter for group sparse penalties
     
     double threshval;
     int wt_len;
+    int nslices;
     
+    double gigs;
     Eigen::RowVectorXd colsums;
     Eigen::RowVectorXd colsq;
     Eigen::VectorXd colsq_inv;
+    
+    bool found_grp_idx;
     
     static void soft_threshold(VectorXd &res, const VectorXd &vec, const double &penalty, 
                                VectorXd &pen_fact, double &d)
@@ -84,7 +90,7 @@ protected:
         int v_size = vec.size();
         res.setZero();
         double gammad = gamma * d;
-        double d_minus_gammainv = d - 1 / gamma;
+        double d_minus_gammainv = d - 1.0 / gamma;
         
         
         const double *ptr = vec.data();
@@ -109,7 +115,7 @@ protected:
         int v_size = vec.size();
         res.setZero();
         double gammad = gamma * d;
-        double gamma_minus1_d = (gamma - 1) * d;
+        double gamma_minus1_d = (gamma - 1.0) * d;
         
         const double *ptr = vec.data();
         for(int i = 0; i < v_size; i++)
@@ -118,20 +124,146 @@ protected:
             
             if (std::abs(ptr[i]) > gammad * total_pen)
                 res(i) = ptr[i]/d;
-            else if (std::abs(ptr[i]) > (d + 1) * total_pen)
+            else if (std::abs(ptr[i]) > (d + 1.0) * total_pen)
             {
-                double gam_ptr = (gamma - 1) * ptr[i];
+                double gam_ptr = (gamma - 1.0) * ptr[i];
                 double gam_pen = gamma * total_pen;
                 if(gam_ptr > gam_pen)
-                    res(i) = (gam_ptr - gam_pen)/(gamma_minus1_d - 1);
+                    res(i) = (gam_ptr - gam_pen)/(gamma_minus1_d - 1.0);
                 else if(gam_ptr < -gam_pen)
-                    res(i) = (gam_ptr + gam_pen)/(gamma_minus1_d - 1);
+                    res(i) = (gam_ptr + gam_pen)/(gamma_minus1_d - 1.0);
             }
             else if(ptr[i] > total_pen)
                 res(i) = (ptr[i] - total_pen)/d;
             else if(ptr[i] < -total_pen)
                 res(i) = (ptr[i] + total_pen)/d;
             
+        }
+    }
+    
+    static double soft_threshold_scad_norm(double &b, const double &pen, double &d, double &gamma)
+    {
+        double retval = 0.0;
+        
+        double gammad = gamma * d;
+        double gamma_minus1_d = (gamma - 1.0) * d;
+        
+        if (std::abs(b) > gammad * pen)
+            retval = 1;
+        else if (std::abs(b) > (d + 1.0) * pen)
+        {
+            double gam_ptr = (gamma - 1.0);
+            double gam_pen = gamma * pen / b;
+            if(gam_ptr > gam_pen)
+                retval = d * (gam_ptr - gam_pen)/(gamma_minus1_d - 1.0);
+            else if(gam_ptr < -gam_pen)
+                retval = d * (gam_ptr + gam_pen)/(gamma_minus1_d - 1.0);
+        }
+        else if(b > pen)
+            retval = (1.0 - pen / b);
+        else if(b < -pen)
+            retval = (1.0 + pen / b);
+        return retval;
+    }
+    
+    static double soft_threshold_mcp_norm(double &b, const double &pen, double &d, double &gamma)
+    {
+        double retval = 0;
+        
+        double gammad = gamma * d;
+        double d_minus_gammainv = d - 1.0 / gamma;
+        
+        if (std::abs(b) > gammad * pen)
+            retval = 1;
+        else if(b > pen)
+            retval = d * (1.0 - pen / b)/(d_minus_gammainv);
+        else if(b < -pen)
+            retval = d * (1.0 + pen / b)/(d_minus_gammainv);
+        
+        return retval;
+    }
+    
+    static void block_soft_threshold_scad(VectorXd &res, const VectorXd &vec, const double &penalty,
+                                          VectorXd &pen_fact, double &d,
+                                          std::vector<std::vector<int> > &grp_idx, 
+                                          const int &ngroups, VectorXi &unique_grps, VectorXi &grps,
+                                          double & gamma)
+    {
+        //int v_size = vec.size();
+        res.setZero();
+        
+        for (int g = 0; g < ngroups; ++g) 
+        {
+            double thresh_factor;
+            std::vector<int> gr_idx = grp_idx[g];
+            
+            if (unique_grps(g) == 0) // the 0 group represents unpenalized variables
+            {
+                thresh_factor = 1.0;
+            } else 
+            {
+                double ds_norm = 0.0;
+                for (std::vector<int>::size_type v = 0; v < gr_idx.size(); ++v)
+                {
+                    int c_idx = gr_idx[v];
+                    ds_norm += std::pow(vec(c_idx), 2);
+                }
+                ds_norm = std::sqrt(ds_norm);
+                // double grp_wts = sqrt(gr_idx.size());
+                double grp_wts = pen_fact(g);
+                //thresh_factor = std::max(0.0, 1.0 - penalty * grp_wts / (ds_norm) );
+                thresh_factor = soft_threshold_scad_norm(ds_norm, penalty * grp_wts, d, gamma);
+            }
+            if (thresh_factor != 0.0)
+            {
+                for (std::vector<int>::size_type v = 0; v < gr_idx.size(); ++v)
+                {
+                    int c_idx = gr_idx[v];
+                    res(c_idx) = vec(c_idx) * thresh_factor / d;
+                }
+            }
+        }
+    }
+    
+    static void block_soft_threshold_mcp(VectorXd &res, const VectorXd &vec, const double &penalty,
+                                         VectorXd &pen_fact, double &d,
+                                         std::vector<std::vector<int> > &grp_idx, 
+                                         const int &ngroups, VectorXi &unique_grps, VectorXi &grps,
+                                         double & gamma)
+    {
+        //int v_size = vec.size();
+        res.setZero();
+        
+        for (int g = 0; g < ngroups; ++g) 
+        {
+            double thresh_factor;
+            std::vector<int> gr_idx = grp_idx[g];
+            
+            if (unique_grps(g) == 0) // the 0 group represents unpenalized variables
+            {
+                thresh_factor = 1.0;
+            } else 
+            {
+                double ds_norm = 0.0;
+                for (std::vector<int>::size_type v = 0; v < gr_idx.size(); ++v)
+                {
+                    int c_idx = gr_idx[v];
+                    ds_norm += std::pow(vec(c_idx), 2);
+                }
+                ds_norm = std::sqrt(ds_norm);
+                // double grp_wts = sqrt(gr_idx.size());
+                double grp_wts = pen_fact(g);
+                //thresh_factor = std::max(0.0, 1.0 - penalty * grp_wts / (ds_norm) );
+                thresh_factor = soft_threshold_mcp_norm(ds_norm, penalty * grp_wts, d, gamma);
+            }
+            if (thresh_factor != 0.0)
+            {
+                for (std::vector<int>::size_type v = 0; v < gr_idx.size(); ++v)
+                {
+                    int c_idx = gr_idx[v];
+                    res(c_idx) = vec(c_idx) * thresh_factor / d;
+                }
+            }
         }
     }
     
@@ -158,10 +290,10 @@ protected:
             */
             if (unique_grps(g) == 0) 
             {
-                thresh_factor = 1;
+                thresh_factor = 1.0;
             } else 
             {
-                double ds_norm = 0;
+                double ds_norm = 0.0;
                 for (std::vector<int>::size_type v = 0; v < gr_idx.size(); ++v)
                 {
                     int c_idx = gr_idx[v];
@@ -170,7 +302,7 @@ protected:
                 ds_norm = std::sqrt(ds_norm);
                 // double grp_wts = sqrt(gr_idx.size());
                 double grp_wts = pen_fact(g);
-                thresh_factor = std::max(0.0, 1 - penalty * grp_wts / (ds_norm) );
+                thresh_factor = std::max(0.0, 1.0 - penalty * grp_wts / (ds_norm) );
             }
             if (thresh_factor != 0.0)
             {
@@ -185,29 +317,125 @@ protected:
     
     
     MatrixXd XtX() const {
-        return MatrixXd(nvars, nvars).setZero().selfadjointView<Lower>().
-        rankUpdate(X.adjoint());
+        if (nslices <= 1)
+        {
+            return MatrixXd(XXdimCalc, XXdimCalc).setZero().selfadjointView<Lower>().
+            rankUpdate(X.adjoint());
+        } else 
+        {
+            MatrixXd XXtmp(XXdimCalc, XXdimCalc);
+            XXtmp.setZero();
+            
+            int numrowscurfirst = std::floor(double(nobs) / double(nslices) );
+            
+        //#pragma omp parallel
+        {
+            MatrixXd XXtmp_private(XXdimCalc, XXdimCalc);
+            XXtmp_private.setZero();
+            
+            // break up computation of X'X into 
+            // X'X = X_1'X_1 + ... + X_ncores'X_ncores
+            //#pragma omp for schedule(static) nowait
+            for (int ff = 0; ff < nslices; ++ff)
+            {
+                
+                if (ff + 1 == nslices)
+                {
+                    int numrowscur = nobs - (nslices - 1) * std::floor(double(nobs) / double(nslices));
+                    XXtmp_private += MatrixXd(XXdimCalc, XXdimCalc).setZero().selfadjointView<Lower>().
+                    rankUpdate(X.bottomRows(numrowscur).adjoint());
+                } else 
+                {
+                    XXtmp_private += MatrixXd(XXdimCalc, XXdimCalc).setZero().selfadjointView<Lower>().
+                    rankUpdate(X.middleRows(ff * numrowscurfirst, numrowscurfirst).adjoint());
+                }
+            }
+            //#pragma omp critical
+            {
+                XXtmp += XXtmp_private; 
+            }
+            
+        }
+        return XXtmp;
+        }
     }
     
     MatrixXd XXt() const {
-        return MatrixXd(nobs, nobs).setZero().selfadjointView<Lower>().
+        return MatrixXd(XXdimCalc, XXdimCalc).setZero().selfadjointView<Lower>().
         rankUpdate(X);
     }
     
     MatrixXd XtWX() const {
-        return MatrixXd(nvars, nvars).setZero().selfadjointView<Lower>().
-        rankUpdate(X.adjoint() * (weights.array().sqrt().matrix()).asDiagonal() );
+        
+        if (nslices <= 1)
+        {
+            return MatrixXd(XXdimCalc, XXdimCalc).setZero().selfadjointView<Lower>().
+            rankUpdate(X.adjoint() * (weights.array().sqrt().matrix()).asDiagonal() );
+        } else 
+        {
+            MatrixXd XXtmp(XXdimCalc, XXdimCalc);
+            XXtmp.setZero();
+            
+            int numrowscurfirst = std::floor(double(nobs) / double(nslices));
+            
+            //#pragma omp parallel
+            {
+                MatrixXd XXtmp_private(XXdimCalc, XXdimCalc);
+                XXtmp_private.setZero();
+                
+                // break up computation of X'X into 
+                // X'X = X_1'X_1 + ... + X_ncores'X_ncores
+                
+                //#pragma omp for schedule(static) nowait
+                for (int ff = 0; ff < nslices; ++ff)
+                {
+                    
+                    if (ff + 1 == nslices)
+                    {
+                        int numrowscur = nobs - (nslices - 1) * std::floor(double(nobs) / double(nslices));
+                        XXtmp_private += MatrixXd(XXdimCalc, XXdimCalc).setZero().selfadjointView<Lower>().
+                        rankUpdate(X.bottomRows(numrowscur).adjoint() * 
+                        (weights.tail(numrowscur).array().sqrt().matrix()).asDiagonal());
+                    } else 
+                    {
+                        XXtmp_private += MatrixXd(XXdimCalc, XXdimCalc).setZero().selfadjointView<Lower>().
+                        rankUpdate(X.middleRows(ff * numrowscurfirst, numrowscurfirst).adjoint() * 
+                        (weights.segment(ff * numrowscurfirst, numrowscurfirst).array().sqrt().matrix()).asDiagonal());
+                    }
+                }
+                //#pragma omp critical
+                {
+                    XXtmp += XXtmp_private; 
+                }
+                
+            }
+            return XXtmp;
+        }
+    }
+    
+    MatrixXd XWXt() const {
+        return MatrixXd(XXdimCalc, XXdimCalc).setZero().selfadjointView<Lower>().
+        rankUpdate( (weights.array().sqrt().matrix()).asDiagonal() * X );
+    }
+    /*
+    MatrixXd XXt() const {
+        return MatrixXd(nobs, nobs).setZero().selfadjointView<Lower>().
+        rankUpdate(X);
     }
     
     MatrixXd XWXt() const {
         return MatrixXd(nobs, nobs).setZero().selfadjointView<Lower>().
         rankUpdate( (weights.array().sqrt().matrix()).asDiagonal() * X );
     }
+     */
     
     void get_group_indexes()
     {
-        if (penalty == "grp.lasso") 
+        // if the group is any group penalty
+        std::string grptxt("grp");
+        if (penalty.find(grptxt) != std::string::npos)
         {
+            found_grp_idx = true;
             
             grp_idx.reserve(ngroups);
             for (int g = 0; g < ngroups; ++g) 
@@ -275,7 +503,7 @@ protected:
             {
                 XX = XWXt();
                 if (intercept)
-                    XX.array() += 1; // adding 1 to all of XX' for the intercept
+                    XX.array() += 1.0; // adding 1 to all of XX' for the intercept
             }
         } else 
         {
@@ -309,7 +537,7 @@ protected:
             {
                 XX = XXt();
                 if (intercept)
-                    XX.array() += 1; // adding 1 to all of XX' for the intercept
+                    XX.array() += 1.0; // adding 1 to all of XX' for the intercept
             }
         }
         
@@ -357,21 +585,84 @@ protected:
             beta = u / d;
         } else if (penalty == "elastic.net")
         {
-            double denom = d + (1 - alpha) * lambda;
-            double lam = alpha * lambda;
+            double denom = d + (1.0 - alpha) * lambda / alpha;
+            double lam = lambda;
             soft_threshold(beta, u, lam, penalty_factor, denom);
         } else if (penalty == "scad") 
         {
             soft_threshold_scad(beta, u, lambda, penalty_factor, d, gamma);
+            
+        } else if (penalty == "scad.net") 
+        {
+            double denom = d + (1.0 - alpha) * lambda / alpha;
+            double lam = lambda;
+            soft_threshold_scad(beta, u, lam, penalty_factor, denom, gamma);
+            
         } else if (penalty == "mcp") 
         {
             soft_threshold_mcp(beta, u, lambda, penalty_factor, d, gamma);
+        } else if (penalty == "mcp.net") 
+        {
+            double denom = d + (1.0 - alpha) * lambda / alpha;
+            double lam = lambda;
+            soft_threshold_mcp(beta, u, lam, penalty_factor, denom, gamma);
+            
         } else if (penalty == "grp.lasso")
         {
             block_soft_threshold(beta, u, lambda, group_weights,
                                  d, grp_idx, ngroups, 
                                  unique_groups, groups);
-        }
+        } else if (penalty == "grp.lasso.net")
+        {
+            double denom = d + (1.0 - alpha) * lambda / alpha;
+            double lam = lambda;
+            block_soft_threshold(beta, u, lam, group_weights,
+                                 denom, grp_idx, ngroups, 
+                                 unique_groups, groups);
+        } else if (penalty == "grp.mcp")
+        {
+            block_soft_threshold_mcp(beta, u, lambda, group_weights,
+                                     d, grp_idx, ngroups, 
+                                     unique_groups, groups, gamma);
+        } else if (penalty == "grp.scad")
+        {
+            block_soft_threshold_scad(beta, u, lambda, group_weights,
+                                      d, grp_idx, ngroups, 
+                                      unique_groups, groups, gamma);
+        } else if (penalty == "grp.mcp.net")
+        {
+            double denom = d + (1.0 - alpha) * lambda / alpha;
+            double lam = lambda;
+            block_soft_threshold_mcp(beta, u, lam, group_weights,
+                                     denom, grp_idx, ngroups, 
+                                     unique_groups, groups, gamma);
+        } else if (penalty == "grp.scad.net")
+        {
+            double denom = d + (1.0 - alpha) * lambda / alpha;
+            double lam = lambda;
+            block_soft_threshold_scad(beta, u, lam, group_weights,
+                                      denom, grp_idx, ngroups, 
+                                      unique_groups, groups, gamma);
+        } else if (penalty == "sparse.grp.lasso")
+        {
+            double lam_grp = (1.0 - tau) * lambda;
+            double lam_l1  = tau * lambda;
+            
+            double fact = 1.0;
+            
+            // first apply soft thresholding
+            // but don't divide by d
+            soft_threshold(beta, u, lam_l1, penalty_factor, fact);
+            
+            VectorXd beta_tmp = beta;
+            
+            // then apply block soft thresholding
+            block_soft_threshold(beta, beta_tmp, lam_grp, 
+                                 group_weights,
+                                 d, grp_idx, ngroups, 
+                                 unique_groups, groups);
+        } 
+        
         
     }
     
@@ -384,11 +675,10 @@ protected:
                const VectorXi &unique_groups_,
                VectorXd &group_weights_,
                VectorXd &penalty_factor_,
-               const double &alpha_,
-               const double &gamma_,
                bool &intercept_,
                bool &standardize_,
-               const double tol_ = 1e-6) :
+               const double tol_ = 1e-6,
+               const double gigs_ = 4.0) :
         oemBase<Eigen::VectorXd>(X_.rows(), 
                                  X_.cols(),
                                  unique_groups_.size(),
@@ -404,12 +694,12 @@ protected:
                                  group_weights(group_weights_),
                                  penalty_factor_size(penalty_factor_.size()),
                                  XXdim( std::min(X_.cols() + int(intercept_) , X_.rows()) ),
+                                 XXdimCalc( std::min(X_.cols(), X_.rows()) ),
                                  XY(X_.cols() + int(intercept_) ), // add extra space if intercept
                                  XX(XXdim, XXdim),                 // add extra space if intercept
-                                 alpha(alpha_),
-                                 gamma(gamma_),
                                  default_group_weights(bool(group_weights_.size() < 1)), // compute default weights if none given
                                                                                     grp_idx(unique_groups_.size()),
+                                 gigs(gigs_),
                                  colsums(X_.cols()),
                                  colsq(X_.cols()),
                                  colsq_inv(X_.cols())
@@ -417,42 +707,84 @@ protected:
                                                                                     {}
         
         
-        double compute_lambda_zero() 
-        { 
-            
+        void init_oem()
+        {
+            int pc = X.cols();
             wt_len = weights.size();
+            
+            found_grp_idx = false;
+            
+            double xgigs = 8.0 * double(nobs) * double(pc) / std::pow(10.0, 9);
+            
+            // calculate number of rows per slice
+            nslices = std::ceil(xgigs / gigs);
             
             if (standardize)
             {
                 if (wt_len)
                 {
-                    colsq = ( weights.asDiagonal() * (X.array().square().matrix()) ).colwise().sum() / (nobs - 1);
+                    // colsq = ( weights.asDiagonal() * (X.array().square().matrix()) ).colwise().sum() / (nobs - 1);
+                    // don't want to access all of X at once
+                    for (int i = 0; i < pc; ++i)
+                    {
+                        colsq(i) = (X.col(i).array().square() * weights.array()).sum() / (nobs - 1);
+                    }
                 } else 
                 {
-                    colsq = X.array().square().matrix().colwise().sum() / (nobs - 1);
+                    // colsq = X.array().square().matrix().colwise().sum() / (nobs - 1);
+                    // don't want to access all of X at once
+                    for (int i = 0; i < pc; ++i)
+                    {
+                        colsq(i) = X.col(i).array().square().sum() / (double(nobs) - 1.0);
+                    }
                 }
-                    colsq_inv = 1 / colsq.array().sqrt();
+                colsq_inv = 1.0 / colsq.array().sqrt();
             }
+            
+            
             
             if (wt_len)
             {
                 if (intercept)
                 {
-                    XY.tail(nvars) = X.transpose() * (Y.array() * weights.array()).matrix();
+                    // XY.tail(nvars) = X.transpose() * (Y.array() * weights.array()).matrix();
+                    // don't want to access all of X at once
+                    for (int i = 0; i < pc; ++i)
+                    {
+                        XY(i + 1) = X.col(i).dot((Y.array() * weights.array()).matrix());
+                    }
+                    
                     XY(0) = (weights.array().sqrt() * Y.array()).sum();
                 } else
                 {
-                    XY.noalias() = X.transpose() * (Y.array() * weights.array()).matrix();
+                    // XY.noalias() = X.transpose() * (Y.array() * weights.array()).matrix();
+                    // don't want to access all of X at once
+                    for (int i = 0; i < pc; ++i)
+                    {
+                        XY(i) = X.col(i).dot((Y.array() * weights.array()).matrix());
+                    }
+                    
                 }
             } else
             {
                 if (intercept)
                 {
-                    XY.tail(nvars) = X.transpose() * Y;
+                    // XY.tail(nvars) = X.transpose() * Y;
+                    // don't want to access all of X at once
+                    for (int i = 0; i < pc; ++i)
+                    {
+                        XY(i + 1) = X.col(i).dot(Y);
+                    }
+                    
                     XY(0) = Y.sum();
                 } else 
                 {
-                    XY.noalias() = X.transpose() * Y;
+                    // XY.noalias() = X.transpose() * Y;
+                    // don't want to access all of X at once
+                    for (int i = 0; i < pc; ++i)
+                    {
+                        XY(i) = X.col(i).dot(Y);
+                    }
                 }
             }
             
@@ -474,30 +806,45 @@ protected:
                 u.resize(nvars + 1);
                 beta.resize(nvars + 1);
                 beta_prev.resize(nvars + 1);
-                colsums = X.colwise().sum();
+                // colsums = X.colwise().sum();
+                // don't want to access all of X at once
+                for (int i = 0; i < pc; ++i)
+                {
+                    colsums(i) = X.col(i).sum();
+                }
             }
             
             // compute XtX or XXt (depending on if n > p or not)
             // and compute A = dI - XtX (if n > p)
             compute_XtX_d_update_A();
-            
-            
+        }
+        
+        double compute_lambda_zero() 
+        { 
             lambda0 = XY.cwiseAbs().maxCoeff();
             return lambda0; 
         }
         double get_d() { return d; }
         
         // init() is a cold start for the first lambda
-        void init(double lambda_, std::string penalty_)
+        void init(double lambda_, std::string penalty_,
+                  double alpha_, double gamma_, double tau_)
         {
             beta.setZero();
             
             lambda = lambda_;
             penalty = penalty_;
             
+            alpha = alpha_;
+            gamma = gamma_;
+            tau   = tau_;
+            
             // get indexes of members of each group.
             // best to do just once in the beginning
-            get_group_indexes();
+            if (!found_grp_idx)
+            {
+                get_group_indexes();
+            }
             
         }
         // when computing for the next lambda, we can use the
@@ -530,12 +877,22 @@ protected:
         virtual double get_loss()
         {
             double loss;
+            VectorXd xbeta(nobs);
+            int pc = X.cols();
+            
+            xbeta.setZero();
+            
+            for (int i = 0; i < pc; ++i)
+            {
+                xbeta.array() += (X.col(i) * beta).array();
+            }
+            
             if (wt_len)
             {
-                loss = ((Y - X * beta).array().square() * weights.array()).sum();
+                loss = ((Y - xbeta).array().square() * weights.array()).sum();
             } else 
             {
-                loss = (Y - X * beta).array().square().sum();
+                loss = (Y - xbeta).array().square().sum();
             }
             return loss;
         }

@@ -40,6 +40,7 @@ RcppExport SEXP oem_fit_dense(SEXP x_,
                               SEXP lmin_ratio_,
                               SEXP alpha_,
                               SEXP gamma_,
+                              SEXP tau_,
                               SEXP penalty_factor_,
                               SEXP standardize_, 
                               SEXP intercept_,
@@ -82,11 +83,13 @@ RcppExport SEXP oem_fit_dense(SEXP x_,
     const double tol       = as<double>(opts["tol"]);
     const double alpha     = as<double>(alpha_);
     const double gamma     = as<double>(gamma_);
+    const double tau       = as<double>(tau_);
     bool standardize       = as<bool>(standardize_);
     bool intercept         = as<bool>(intercept_);
     bool intercept_bin     = intercept;
     bool compute_loss      = as<bool>(compute_loss_);
     const bool accelerate  = as<double>(opts["accelerate"]);
+    
     
     CharacterVector family(as<CharacterVector>(family_));
     std::vector<std::string> penalty(as< std::vector<std::string> >(penalty_));
@@ -137,6 +140,7 @@ RcppExport SEXP oem_fit_dense(SEXP x_,
     DataStd<double> datstd(n, p + add, standardize, intercept);
     datstd.standardize(X, Y, weights);
     
+    
     // initialize pointers 
     oemBase<Eigen::VectorXd> *solver = NULL; // solver doesn't point to anything yet
     
@@ -146,7 +150,7 @@ RcppExport SEXP oem_fit_dense(SEXP x_,
     {
         solver = new oemDense(X, Y, weights, groups, unique_groups, 
                               group_weights, penalty_factor, 
-                              alpha, gamma, intercept, standardize, 
+                              intercept, standardize, 
                               ncores, tol, accelerate);
     } else if (family(0) == "binomial")
     {
@@ -155,17 +159,18 @@ RcppExport SEXP oem_fit_dense(SEXP x_,
     }
     
     
+    solver->init_oem();
+    
     double lmax = 0.0;
     lmax = solver->compute_lambda_zero() * datstd.get_scaleY(); // 
     
     
-    if (nlambda < 1) {
-        
+    if (nlambda < 1) 
+    {
         double lmin = as<double>(lmin_ratio_) * lmax;
         lambda.setLinSpaced(as<int>(nlambda_), std::log(lmax), std::log(lmin));
         lambda = lambda.exp();
         nlambda = lambda.size();
-        
     }
     
     
@@ -191,9 +196,14 @@ RcppExport SEXP oem_fit_dense(SEXP x_,
         for(int i = 0; i < nlambda; i++)
         {
             
+            if (i % 3 == 0)
+            {
+                Rcpp::checkUserInterrupt();
+            }
+            
             ilambda = lambda[i] / datstd.get_scaleY(); // * n; //     
             if(i == 0)
-                solver->init(ilambda, penalty[pp]);
+                solver->init(ilambda, penalty[pp], alpha, gamma, tau);
             else
                 solver->init_warm(ilambda);
             

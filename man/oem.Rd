@@ -5,24 +5,47 @@
 \title{Orthogonalizing EM}
 \usage{
 oem(x, y, family = c("gaussian", "binomial"), penalty = c("elastic.net",
-  "lasso", "ols", "mcp", "scad", "grp.lasso"), weights = numeric(0),
-  lambda = numeric(0), nlambda = 100L, lambda.min.ratio = NULL,
-  alpha = 1, gamma = 3, groups = numeric(0), penalty.factor = NULL,
+  "lasso", "ols", "mcp", "scad", "mcp.net", "scad.net", "grp.lasso",
+  "grp.lasso.net", "grp.mcp", "grp.scad", "grp.mcp.net", "grp.scad.net",
+  "sparse.grp.lasso"), weights = numeric(0), lambda = numeric(0),
+  nlambda = 100L, lambda.min.ratio = NULL, alpha = 1, gamma = 3,
+  tau = 0.5, groups = numeric(0), penalty.factor = NULL,
   group.weights = NULL, standardize = TRUE, intercept = TRUE,
   maxit = 500L, tol = 1e-07, irls.maxit = 100L, irls.tol = 0.001,
   accelerate = FALSE, ncores = -1, compute.loss = FALSE,
-  hessian.type = c("full", "upper.bound"))
+  hessian.type = c("upper.bound", "full"))
 }
 \arguments{
-\item{x}{input matrix or \code{CsparseMatrix} object of the \pkg{Matrix} package. 
-Each row is an observation, each column corresponds to a covariate}
+\item{x}{input matrix of dimension n x p or \code{CsparseMatrix} object of the \pkg{Matrix} package. 
+Each row is an observation, each column corresponds to a covariate. The oem() function
+is optimized for n >> p settings and may be very slow when p > n, so please use other packages
+such as \code{glmnet}, \code{ncvreg}, \code{grpreg}, or \code{gglasso} when p > n or p approx n.}
 
 \item{y}{numeric response vector of length \code{nobs}.}
 
 \item{family}{\code{"gaussian"} for least squares problems, \code{"binomial"} for binary response.}
 
-\item{penalty}{Specification of penalty type. Choices include \code{"lasso"}, 
-\code{"ols"} (Ordinary least squares, no penaly), \code{"elastic.net"}, \code{"scad"}, \code{"mcp"}, \code{"grp.lasso"}}
+\item{penalty}{Specification of penalty type. Choices include:
+\itemize{
+   \item{\code{"elastic.net"}}{ - elastic net penalty, extra parameters: \code{"alpha"}}
+   \item{\code{"lasso"}}{ - lasso penalty}
+   \item{\code{"ols"}}{ - ordinary least squares}
+   \item{\code{"mcp"}}{ - minimax concave penalty, extra parameters: \code{"gamma"}}
+   \item{\code{"scad"}}{ - smoothly clipped absolute deviation, extra parameters: \code{"gamma"}}
+   \item{\code{"mcp.net"}}{ - minimax concave penalty + l2 penalty, extra parameters: 
+   \code{"gamma"}, \code{"alpha"}}
+   \item{\code{"scad.net"}}{ - smoothly clipped absolute deviation + l2 penalty, extra parameters: 
+   \code{"gamma"}, \code{"alpha"}}
+   \item{\code{"grp.lasso"}}{ - group lasso penalty}
+   \item{\code{"grp.lasso.net"}}{ - group lasso penalty + l2 penalty, extra parameters: \code{"alpha"}}
+   \item{\code{"grp.mcp"}}{ - group minimax concave penalty, extra parameters: \code{"gamma"}}
+   \item{\code{"grp.scad"}}{ - group smoothly clipped absolute deviation, extra parameters: \code{"gamma"}}
+   \item{\code{"grp.mcp.net"}}{ - group minimax concave penalty + l2 penalty, extra parameters: \code{"gamma"}, \code{"alpha"}}
+   \item{\code{"grp.scad.net"}}{ - group smoothly clipped absolute deviation + l2 penalty, extra parameters: \code{"gamma"}, \code{"alpha"}}
+   \item{\code{"sparse.grp.lasso"}}{ - sparse group lasso penalty (group lasso + lasso), extra parameters: \code{"tau"}}
+}
+Careful consideration is required for the group lasso, group MCP, and group SCAD penalties. Groups as specified by the \code{groups} argument 
+should be chosen in a sensible manner.}
 
 \item{weights}{observation weights. Not implemented yet. Defaults to 1 for each observation (setting weight vector to 
 length 0 will default all weights to 1)}
@@ -40,9 +63,12 @@ depends on the sample size nobs relative to the number of variables nvars. If
 is 0.01. A very small value of \code{lambda.min.ratio} will lead to a saturated fit
 when \code{nobs < nvars}.}
 
-\item{alpha}{mixing value for \code{elastic.net}. penalty applied is (1 - alpha) * (ridge penalty) + alpha * (lasso penalty)}
+\item{alpha}{mixing value for \code{elastic.net}, \code{mcp.net}, \code{scad.net}, \code{grp.mcp.net}, \code{grp.scad.net}. 
+penalty applied is ((1 - alpha)/alpha) * (ridge penalty) + (lasso/mcp/mcp/grp.lasso penalty)}
 
 \item{gamma}{tuning parameter for SCAD and MCP penalties. must be >= 1}
+
+\item{tau}{mixing value for \code{sparse.grp.lasso}. penalty applied is (1 - tau) * (group lasso penalty) + tau * (lasso penalty)}
 
 \item{groups}{A vector of describing the grouping of the coefficients. See the example below. All unpenalized variables
 should be put in group 0}
@@ -101,12 +127,13 @@ x <- matrix(rnorm(n.obs * n.vars), n.obs, n.vars)
 y <- rnorm(n.obs, sd = 3) + x \%*\% true.beta
 
 fit <- oem(x = x, y = y, 
-           penalty = c("lasso", "grp.lasso"), 
+           penalty = c("lasso", "grp.lasso", "sparse.grp.lasso"), 
            groups = rep(1:10, each = 5))
 
-layout(matrix(1:2, ncol = 2))
+layout(matrix(1:3, ncol = 3))
 plot(fit)
 plot(fit, which.model = 2)
+plot(fit, which.model = "sparse.grp.lasso")
 
 # the oem package has support for
 # sparse design matrices
@@ -132,11 +159,16 @@ max(abs(fit$beta[[2]] - fits$beta[[2]]))
 y <- rbinom(n.obs, 1, prob = 1 / (1 + exp(-x \%*\% true.beta)))
 
 system.time(res <- oem(x, y, intercept = FALSE, 
-                       penalty = "lasso", 
+                       penalty = c("lasso", "sparse.grp.lasso", "mcp"), 
                        family = "binomial", 
+                       groups = rep(1:10, each = 5),
                        nlambda = 10,
                        irls.tol = 1e-3, tol = 1e-8))
 
+layout(matrix(1:3, ncol = 3))
+plot(res)
+plot(res, which.model = 2)
+plot(res, which.model = "mcp")
 
 
 # sparse design matrix

@@ -16,7 +16,7 @@
 #' \code{type = "response"} gives the fitted probabilities for \code{"binomial"}. \code{type = "coefficients"} computes the coefficients at the requested values for \code{s}.
 #' \code{type = "class"} applies only to \code{"binomial"} and produces the class label corresponding to the maximum probability.
 #' @param ... not used 
-#' @importFrom graphics abline abline axis matplot points segments
+#' @importFrom graphics abline abline axis matplot mtext points segments 
 #' @importFrom methods as
 #' @importFrom stats approx predict quantile runif weighted.mean
 #' @return An object depending on the type argument
@@ -55,11 +55,27 @@ predict.oem <- function(object, newx, s = NULL, which.model = 1,
     type <- match.arg(type)
     
     num.models <- length(object$beta)
-    if (which.model > num.models)
+    which.model <- which.model[1]
+    pen.names   <- names(object$beta)
+    
+    if (!is.character(which.model))
     {
-        err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
-        stop(err.txt)
+        if (which.model > num.models)
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
+            stop(err.txt)
+        }
+    } else 
+    {
+        if (!(which.model %in% pen.names))
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but ", which.model, " not computed.")
+            stop(err.txt)
+        }
+        which.model <- match(which.model, pen.names)
     }
+    
+    
     if(missing(newx)){
         if(!match(type, c("coefficients", "nonzero"), FALSE))stop("A value for 'newx' must be supplied")
     }
@@ -73,8 +89,10 @@ predict.oem <- function(object, newx, s = NULL, which.model = 1,
         #dimnames(nbeta)=list(vnames,paste(seq(along=s)))
     }
     if (type == "coefficients") return(nbeta)
-    if (type == "nonzero") {
-        newbeta <- abs(as.matrix(object$beta[[which.model]])) > 0
+    if (type == "nonzero") 
+    {
+        nbeta[1,] <- 0 ## rem intercept
+        newbeta <- abs(as.matrix(nbeta)) > 0
         index <- 1:(dim(newbeta)[1])
         nzel <- function(x, index) if(any(x)) index[x] else NULL
         betaList <- apply(newbeta, 2, nzel, index)
@@ -100,6 +118,7 @@ predict.oem <- function(object, newx, s = NULL, which.model = 1,
 #' @param labsize size of labels for variable names. If labsize = 0, then no variable names will be plotted
 #' @param xlab label for x-axis
 #' @param ylab label for y-axis
+#' @param main main title for plot
 #' @param ... other graphical parameters for the plot
 #' @rdname plot
 #' @export
@@ -123,18 +142,35 @@ predict.oem <- function(object, newx, s = NULL, which.model = 1,
 plot.oem <- function(x, which.model = 1,
                      xvar = c("norm", "lambda", "loglambda", "dev"),
                      labsize = 0.6,
-                     xlab = iname, ylab = "Coefficients", 
+                     xlab = iname, ylab = NULL, 
+                     main = x$penalty[which.model],
                      ...) 
 {
     num.models <- length(x$beta)
-    if (which.model > num.models)
+    
+    
+    which.model <- which.model[1]
+    pen.names   <- names(x$beta)
+    
+    if (!is.character(which.model))
     {
-        err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
-        stop(err.txt)
+        if (which.model > num.models)
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
+            stop(err.txt)
+        }
+    } else 
+    {
+        if (!(which.model %in% pen.names))
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but ", which.model, " not computed.")
+            stop(err.txt)
+        }
+        which.model <- match(which.model, pen.names)
     }
     
-    main.txt <- x$penalty[which.model]
     
+
     xvar <- match.arg(xvar)
     nbeta <- as.matrix(x$beta[[which.model]][-1,]) ## remove intercept
     remove <- apply(nbeta, 1, function(betas) all(betas == 0) )
@@ -166,16 +202,41 @@ plot.oem <- function(x, which.model = 1,
     )
     if (all(remove)) stop("All beta estimates are zero for all values of lambda. No plot returned.")
     
+    
+    cols <- rainbow(sum(!remove))
+    
+    ## create sequence that grabs one of ROYGBIV and repeats with
+    ## an increment up the rainbow spectrum with each step from 1:7 on ROYGBIV
+    n.cols <- 7L
+    scramble.seq <- rep(((1:n.cols) - 1) * (length(cols) %/% (n.cols)) + 1, length(cols) %/% n.cols)[1:length(cols)] + 
+        (((0:(length(cols)-1)) %/% n.cols))
+    
+    scramble.seq[is.na(scramble.seq)] <- which(!(1:length(cols) %in% scramble.seq))
+    colseq <- cols[scramble.seq]
+    
+
     matplot(index, t(nbeta[!remove,,drop=FALSE]), 
-            lty = 1, xlab = xlab, 
-            col=rainbow(sum(!remove)),
-            ylab = ylab, xlim = xlim,
+            lty = 1, 
+            xlab = xlab, 
+            ylab = "",
+            col = colseq,
+            xlim = xlim,
             type = 'l', ...)
+    
+    if (is.null(ylab)) 
+    {
+        mtext(expression(hat(beta)), side = 2, cex = par("cex"), line = 3, las = 1)
+    } else 
+    {
+        mtext(ylab, side = 2, cex = par("cex"), line = 3)
+        ylab = ""
+    }
     
     atdf <- pretty(index, n = 10L)
     plotnz <- approx(x = index, y = x$nzero[[which.model]], xout = atdf, rule = 2, method = "constant", f = approx.f)$y
     axis(side=3, at = atdf, labels = plotnz, tick=FALSE, line=0, ...)
-    title(main.txt, line = 2.5, ...)
+    
+    title(main, line = 2.5, ...)
     
     
     
@@ -189,8 +250,8 @@ plot.oem <- function(x, which.model = 1,
         for (i in 1:sum(!remove)) {
             j <- take[i]
             axis(4, at = nbeta[j, ncol(nbeta)], labels = rownames(nbeta)[j],
-                 las=1, cex.axis=labsize, col.axis=rainbow(sum(!remove))[i], 
-                 lty = (i - 1) %% 5 + 1, col = rainbow(sum(!remove))[i], ...)
+                 las=1, cex.axis=labsize, col.axis = colseq[i], 
+                 lty = (i - 1) %% 5 + 1, col = colseq[i], ...)
         }
     }
     par("mai"=margins)
@@ -216,17 +277,32 @@ plot.oem <- function(x, which.model = 1,
 #' 
 #' layout(matrix(1:2, ncol = 2))
 #' plot(fit, which.model = 1)
-#' plot(fit, which.model = 2)
+#' plot(fit, which.model = "grp.lasso")
 #' 
 plot.cv.oem <- function(x, which.model = 1, sign.lambda = 1, ...)
 {
     # modified from glmnet
     object = x
     num.models <- length(object$cvm)
-    if (which.model > num.models)
+    
+    which.model <- which.model[1]
+    pen.names   <- names(object$oem.fit$beta)
+    
+    if (!is.character(which.model))
     {
-        err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
-        stop(err.txt)
+        if (which.model > num.models)
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
+            stop(err.txt)
+        }
+    } else 
+    {
+        if (!(which.model %in% pen.names))
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but ", which.model, " not computed.")
+            stop(err.txt)
+        }
+        which.model <- match(which.model, pen.names)
     }
     
     main.txt <- x$oem.fit$penalty[which.model]
@@ -345,19 +421,36 @@ predict.oemfit_xval_binomial <- function(object, newx, s=NULL, which.model = 1,
 #' x <- matrix(rnorm(n.obs * n.vars), n.obs, n.vars)
 #' y <- rnorm(n.obs, sd = 3) + x %*% true.beta
 #'
-#' fit <- oem(x = x, y = y, penalty = "lasso", compute.loss = TRUE)
+#' fit <- oem(x = x, y = y, penalty = c("lasso", "mcp"), compute.loss = TRUE)
 #'
 #' logLik(fit)
+#' 
+#' logLik(fit, which.model = "mcp")
 #'
 logLik.oem <- function(object, which.model = 1, ...) {
     # taken from ncvreg. Thanks to Patrick Breheny.
     n <- as.numeric(object$nobs)
     
     num.models <- length(object$beta)
-    if (which.model > num.models)
+    
+    which.model <- which.model[1]
+    pen.names   <- names(object$beta)
+    
+    if (!is.character(which.model))
     {
-        err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
-        stop(err.txt)
+        if (which.model > num.models)
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
+            stop(err.txt)
+        }
+    } else 
+    {
+        if (!(which.model %in% pen.names))
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but ", which.model, " not computed.")
+            stop(err.txt)
+        }
+        which.model <- match(which.model, pen.names)
     }
     
     if (all(object$loss[[which.model]] == 1e99))
@@ -395,9 +488,12 @@ logLik.oem <- function(object, which.model = 1, ...) {
 #' @export 
 #' @examples
 #'
-#' fit <- cv.oem(x = x, y = y, penalty = "lasso", compute.loss = TRUE)
+#' fit <- cv.oem(x = x, y = y, penalty = c("lasso", "mcp"), compute.loss = TRUE,
+#'               nlambda = 25)
 #'
 #' logLik(fit)
+#' 
+#' logLik(fit, which.model = "mcp")
 #'
 logLik.cv.oem <- function(object, which.model = 1, ...) {
     
@@ -406,10 +502,25 @@ logLik.cv.oem <- function(object, which.model = 1, ...) {
     n <- as.numeric(object$nobs)
     
     num.models <- length(object$beta)
-    if (which.model > num.models)
+    
+    which.model <- which.model[1]
+    pen.names   <- names(object$beta)
+    
+    if (!is.character(which.model))
     {
-        err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
-        stop(err.txt)
+        if (which.model > num.models)
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
+            stop(err.txt)
+        }
+    } else 
+    {
+        if (!(which.model %in% pen.names))
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but ", which.model, " not computed.")
+            stop(err.txt)
+        }
+        which.model <- match(which.model, pen.names)
     }
     
     if (all(object$loss[[which.model]] == 1e99))
@@ -447,9 +558,12 @@ logLik.cv.oem <- function(object, which.model = 1, ...) {
 #' @export 
 #' @examples
 #'
-#' fit <- xval.oem(x = x, y = y, penalty = "lasso", compute.loss = TRUE)
+#' fit <- xval.oem(x = x, y = y, penalty = c("lasso", "mcp"), compute.loss = TRUE, 
+#'                 nlambda = 25)
 #'
 #' logLik(fit)
+#' 
+#' logLik(fit, which.model = "mcp")
 #'
 logLik.xval.oem <- function(object, which.model = 1, ...) {
     
@@ -457,10 +571,25 @@ logLik.xval.oem <- function(object, which.model = 1, ...) {
     n <- as.numeric(object$nobs)
     
     num.models <- length(object$beta)
-    if (which.model > num.models)
+    
+    which.model <- which.model[1]
+    pen.names   <- names(object$beta)
+    
+    if (!is.character(which.model))
     {
-        err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
-        stop(err.txt)
+        if (which.model > num.models)
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
+            stop(err.txt)
+        }
+    } else 
+    {
+        if (!(which.model %in% pen.names))
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but ", which.model, " not computed.")
+            stop(err.txt)
+        }
+        which.model <- match(which.model, pen.names)
     }
     
     if (all(object$loss[[which.model]] == 1e99))
@@ -533,9 +662,18 @@ logLik.xval.oem <- function(object, which.model = 1, ...) {
 #' preds.best <- predict(fit, newx = x.test, type = "response", which.model = "best.model")
 #' 
 #' apply(preds.best, 2, function(x) mean((y.test - x) ^ 2))
+#' 
+#' preds.gl <- predict(fit, newx = x.test, type = "response", which.model = "grp.lasso")
+#' 
+#' apply(preds.gl, 2, function(x) mean((y.test - x) ^ 2))
+#' 
+#' preds.l <- predict(fit, newx = x.test, type = "response", which.model = 1)
+#' 
+#' apply(preds.l, 2, function(x) mean((y.test - x) ^ 2))
 predict.cv.oem <- function(object, newx, which.model = "best.model",
                            s=c("lambda.min", "lambda.1se"), ...)
 {
+    which.model <- which.model[1]
     if(is.numeric(s))lambda=s
     else 
         if(is.character(s)){
@@ -555,7 +693,20 @@ predict.cv.oem <- function(object, newx, which.model = "best.model",
     }
     else if(is.character(which.model))
     {
-        mod.num <- object[["model.min"]]
+        if (which.model == "best.model")
+        {
+            mod.num <- object[["model.min"]]
+        } else 
+        {
+            pen.names   <- names(object$oem.fit$beta)
+            
+            if (!(which.model %in% pen.names))
+            {
+                err.txt <- paste0("Model ", which.model, " specified, but ", which.model, " not computed.")
+                stop(err.txt)
+            }
+            mod.num <- match(which.model, pen.names)
+        }
     }
     
     else stop("Invalid form for s")
@@ -602,9 +753,19 @@ predict.cv.oem <- function(object, newx, which.model = "best.model",
 #' preds.best <- predict(fit, newx = x.test, type = "response", which.model = "best.model")
 #' 
 #' apply(preds.best, 2, function(x) mean((y.test - x) ^ 2))
+#' 
+#' preds.gl <- predict(fit, newx = x.test, type = "response", which.model = "grp.lasso")
+#' 
+#' apply(preds.gl, 2, function(x) mean((y.test - x) ^ 2))
+#' 
+#' preds.l <- predict(fit, newx = x.test, type = "response", which.model = 1)
+#' 
+#' apply(preds.l, 2, function(x) mean((y.test - x) ^ 2))
 predict.xval.oem <- function(object, newx, which.model = "best.model",
                              s = c("lambda.min", "lambda.1se"),...)
 {
+    
+    which.model <- which.model[1]
     if(is.numeric(s))lambda=s
     else 
         if(is.character(s)){
@@ -625,7 +786,20 @@ predict.xval.oem <- function(object, newx, which.model = "best.model",
     }
     else if(is.character(which.model))
     {
-        mod.num <- object[["model.min"]]
+        if (which.model == "best.model")
+        {
+            mod.num <- object[["model.min"]]
+        } else 
+        {
+            pen.names   <- names(object$beta)
+            
+            if (!(which.model %in% pen.names))
+            {
+                err.txt <- paste0("Model ", which.model, " specified, but ", which.model, " not computed.")
+                stop(err.txt)
+            }
+            mod.num <- match(which.model, pen.names)
+        }
     }
     else stop("Invalid form for which.model")
     predict.oem(object, newx, s=lambda, which.model = mod.num, ...)
@@ -667,24 +841,39 @@ plot.xval.oem <- function(x, which.model = 1,
                           type = c("cv", "coefficients"),
                           xvar = c("norm", "lambda", "loglambda", "dev"),
                           labsize = 0.6,
-                          xlab = iname, ylab = "Coefficients", 
+                          xlab = iname, ylab = NULL, 
+                          main = x$penalty[which.model],
                           sign.lambda = 1,
                           ...) 
 {
     type       <- match.arg(type)
     num.models <- length(x$beta)
-    if (which.model > num.models)
+    
+    which.model <- which.model[1]
+    pen.names   <- names(x$beta)
+    
+    if (!is.character(which.model))
     {
-        err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
-        stop(err.txt)
+        if (which.model > num.models)
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but only ", num.models, " were computed.")
+            stop(err.txt)
+        }
+    } else 
+    {
+        if (!(which.model %in% pen.names))
+        {
+            err.txt <- paste0("Model ", which.model, " specified, but ", which.model, " not computed.")
+            stop(err.txt)
+        }
+        which.model <- match(which.model, pen.names)
     }
     
-    main.txt <- x$penalty[which.model]
     
     if (type == "coefficients")
     {
         xvar <- match.arg(xvar)
-        nbeta <- as.matrix(x$beta[[which.model]])
+        nbeta <- as.matrix(x$beta[[which.model]][-1,]) ## remove intercept from plot
         remove <- apply(nbeta, 1, function(betas) all(betas == 0) )
         switch(xvar,
                "norm" = {
@@ -714,16 +903,40 @@ plot.xval.oem <- function(x, which.model = 1,
         )
         if (all(remove)) stop("All beta estimates are zero for all values of lambda. No plot returned.")
         
+        cols <- rainbow(sum(!remove))
+        
+        ## create sequence that grabs one of ROYGBIV and repeats with
+        ## an increment up the rainbow spectrum with each step from 1:7 on ROYGBIV
+        n.cols <- 7L
+        scramble.seq <- rep(((1:n.cols) - 1) * (length(cols) %/% (n.cols)) + 1, length(cols) %/% n.cols)[1:length(cols)] + 
+            (((0:(length(cols)-1)) %/% n.cols))
+        
+        scramble.seq[is.na(scramble.seq)] <- which(!(1:length(cols) %in% scramble.seq))
+        colseq <- cols[scramble.seq]
+        
+        
         matplot(index, t(nbeta[!remove,,drop=FALSE]), 
-                lty = 1, xlab = xlab, 
-                col=rainbow(sum(!remove)),
-                ylab = ylab, xlim = xlim,
+                lty = 1, 
+                xlab = xlab, 
+                ylab = "",
+                col = colseq,
+                xlim = xlim,
                 type = 'l', ...)
+        
+        if (is.null(ylab)) 
+        {
+            mtext(expression(hat(beta)), side = 2, cex = par("cex"), line = 3, las = 1)
+        } else 
+        {
+            mtext(ylab, side = 2, cex = par("cex"), line = 3)
+            ylab = ""
+        }
+        
         
         atdf <- pretty(index, n = 10L)
         plotnz <- approx(x = index, y = x$nzero[[which.model]], xout = atdf, rule = 2, method = "constant", f = approx.f)$y
         axis(side=3, at = atdf, labels = plotnz, tick=FALSE, line=0, ...)
-        title(main.txt, line = 2.5, ...)
+        title(main, line = 2.5, ...)
         
         
         
@@ -737,8 +950,8 @@ plot.xval.oem <- function(x, which.model = 1,
             for (i in 1:sum(!remove)) {
                 j <- take[i]
                 axis(4, at = nbeta[j, ncol(nbeta)], labels = rownames(nbeta)[j],
-                     las=1, cex.axis=labsize, col.axis=rainbow(sum(!remove))[i], 
-                     lty = (i - 1) %% 5 + 1, col = rainbow(sum(!remove))[i], ...)
+                     las=1, cex.axis=labsize, col.axis = colseq[i], 
+                     lty = (i - 1) %% 5 + 1, col = colseq[i], ...)
             }
         }
         par("mai"=margins)
@@ -762,7 +975,7 @@ plot.xval.oem <- function(x, which.model = 1,
         axis(side=3,at=sign.lambda*log(x$lambda),labels = paste(x$nzero[[which.model]]), tick=FALSE, line=0, ...)
         abline(v = sign.lambda * log(x$lambda.min.models[which.model]), lty=2, lwd = 2, col = "firebrick1")
         abline(v = sign.lambda * log(x$lambda.1se.models[which.model]), lty=2, lwd = 2, col = "firebrick1")
-        title(main.txt, line = 2.5, ...)
+        title(main, line = 2.5, ...)
     }
 }
 

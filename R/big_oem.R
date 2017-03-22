@@ -6,8 +6,27 @@
 #' @param y numeric response vector of length nobs.
 #' @param family \code{"gaussian"} for least squares problems, \code{"binomial"} for binary response. 
 #' \code{"binomial"} currently not available.
-#' @param penalty Specification of penalty type in lowercase letters. Choices include \code{"lasso"}, 
-#' \code{"ols"} (Ordinary least squares, no penaly), \code{"elastic.net"}, \code{"scad"}, \code{"mcp"}, \code{"grp.lasso"}
+#' @param penalty Specification of penalty type. Choices include:
+#' \itemize{
+#'    \item{\code{"elastic.net"}}{ - elastic net penalty, extra parameters: \code{"alpha"}}
+#'    \item{\code{"lasso"}}{ - lasso penalty}
+#'    \item{\code{"ols"}}{ - ordinary least squares}
+#'    \item{\code{"mcp"}}{ - minimax concave penalty, extra parameters: \code{"gamma"}}
+#'    \item{\code{"scad"}}{ - smoothly clipped absolute deviation, extra parameters: \code{"gamma"}}
+#'    \item{\code{"mcp.net"}}{ - minimax concave penalty + l2 penalty, extra parameters: 
+#'    \code{"gamma"}, \code{"alpha"}}
+#'    \item{\code{"scad.net"}}{ - smoothly clipped absolute deviation + l2 penalty, extra parameters: 
+#'    \code{"gamma"}, \code{"alpha"}}
+#'    \item{\code{"grp.lasso"}}{ - group lasso penalty}
+#'    \item{\code{"grp.lasso.net"}}{ - group lasso penalty + l2 penalty, extra parameters: \code{"alpha"}}
+#'    \item{\code{"grp.mcp"}}{ - group minimax concave penalty, extra parameters: \code{"gamma"}}
+#'    \item{\code{"grp.scad"}}{ - group smoothly clipped absolute deviation, extra parameters: \code{"gamma"}}
+#'    \item{\code{"grp.mcp.net"}}{ - group minimax concave penalty + l2 penalty, extra parameters: \code{"gamma"}, \code{"alpha"}}
+#'    \item{\code{"grp.scad.net"}}{ - group smoothly clipped absolute deviation + l2 penalty, extra parameters: \code{"gamma"}, \code{"alpha"}}
+#'    \item{\code{"sparse.grp.lasso"}}{ - sparse group lasso penalty (group lasso + lasso), extra parameters: \code{"tau"}}
+#' }
+#' Careful consideration is required for the group lasso, group MCP, and group SCAD penalties. Groups as specified by the \code{groups} argument 
+#' should be chosen in a sensible manner.
 #' @param weights observation weights. Not implemented yet. Defaults to 1 for each observation (setting weight vector to 
 #' length 0 will default all weights to 1)
 #' @param lambda A user supplied lambda sequence. By default, the program computes
@@ -20,8 +39,10 @@
 #' \code{nobs > nvars}, the default is 0.0001, close to zero. If \code{nobs < nvars}, the default
 #' is 0.01. A very small value of \code{lambda.min.ratio} will lead to a saturated fit
 #' when \code{nobs < nvars}.
-#' @param alpha mixing value for \code{elastic.net}. penalty applied is (1 - alpha) * (ridge penalty) + alpha * (lasso penalty)
+#' @param alpha mixing value for \code{elastic.net}, \code{mcp.net}, \code{scad.net}, \code{grp.mcp.net}, \code{grp.scad.net}. 
+#' penalty applied is ((1 - alpha)/alpha) * (ridge penalty) + (lasso/mcp/mcp/grp.lasso penalty)
 #' @param gamma tuning parameter for SCAD and MCP penalties. must be >= 1
+#' @param tau mixing value for \code{sparse.grp.lasso}. penalty applied is (1 - tau) * (group lasso penalty) + tau * (lasso penalty)
 #' @param groups A vector of describing the grouping of the coefficients. See the example below. All unpenalized variables
 #' should be put in group 0
 #' @param penalty.factor Separate penalty factors can be applied to each coefficient. 
@@ -44,6 +65,8 @@
 #' @param irls.tol convergence tolerance for IRLS iterations. Only used if \code{family != "gaussian"}
 #' @param compute.loss should the loss be computed for each estimated tuning parameter? Defaults to \code{FALSE}. Setting
 #' to \code{TRUE} will dramatically increase computational time
+#' @param gigs maximum number of gigs of memory available. Used to figure out how to break up calculations
+#' involving the design matrix x
 #' @param hessian.type only for logistic regression. if \code{hessian.type = "full"}, then the full hessian is used. If
 #' \code{hessian.type = "upper.bound"}, then an upper bound of the hessian is used. The upper bound can be dramatically
 #' faster in certain situations, ie when n >> p
@@ -72,7 +95,13 @@
 #' y <- rnorm(nrows) + bigmat[,1] - bigmat[,2]
 #' 
 #' fit <- big.oem(x = bigmat, y = y, 
-#'                penalty = c("lasso", "grp.lasso"), 
+#'                penalty = c("lasso", "elastic.net", 
+#'                            "ols", 
+#'                            "mcp",       "scad", 
+#'                            "mcp.net",   "scad.net",
+#'                            "grp.lasso", "grp.lasso.net",
+#'                            "grp.mcp",   "grp.scad",
+#'                            "sparse.grp.lasso"), 
 #'                groups = rep(1:20, each = 5))
 #'                
 #' fit2 <- oem(x = bigmat[,], y = y, 
@@ -88,13 +117,22 @@
 big.oem <- function(x, 
                     y, 
                     family = c("gaussian", "binomial"),
-                    penalty = c("elastic.net", "lasso", "ols", "mcp", "scad", "grp.lasso"),
+                    penalty = c("elastic.net", 
+                                "lasso", 
+                                "ols", 
+                                "mcp",           "scad", 
+                                "mcp.net",       "scad.net",
+                                "grp.lasso",     "grp.lasso.net",
+                                "grp.mcp",       "grp.scad",
+                                "grp.mcp.net",   "grp.scad.net",
+                                "sparse.grp.lasso"),
                     weights = numeric(0),
                     lambda = numeric(0),
                     nlambda = 100L,
                     lambda.min.ratio = NULL,
                     alpha = 1,
                     gamma = 3,
+                    tau   = 0.5,
                     groups = numeric(0),
                     penalty.factor = NULL,
                     group.weights = NULL,
@@ -105,6 +143,7 @@ big.oem <- function(x,
                     irls.maxit = 100L,
                     irls.tol = 1e-3,
                     compute.loss = FALSE,
+                    gigs         = 4.0,
                     hessian.type = c("full", "upper.bound")) 
 {
     family       <- match.arg(family)
@@ -152,7 +191,7 @@ big.oem <- function(x,
     }
     penalty.factor <- drop(penalty.factor)
     
-    if (any(penalty == "grp.lasso")) {
+    if (any(grep("grp", penalty) > 0)) {
         if (length(groups) != p) {
             stop("groups must have same length as number of columns in x")
         }
@@ -243,8 +282,10 @@ big.oem <- function(x,
     nlambda       <- as.integer(nlambda)
     alpha         <- as.double(alpha)
     gamma         <- as.double(gamma)
+    tau           <- as.double(tau)
     tol           <- as.double(tol)
     irls.tol      <- as.double(irls.tol)
+    gigs          <- as.double(gigs)
     irls.maxit    <- as.integer(irls.maxit)
     maxit         <- as.integer(maxit)
     standardize   <- as.logical(standardize)
@@ -265,7 +306,8 @@ big.oem <- function(x,
                     tol          = tol,
                     irls_maxit   = irls.maxit,
                     irls_tol     = irls.tol,
-                    hessian.type = hessian.type)
+                    hessian.type = hessian.type,
+                    gigs         = gigs)
     
     res <- switch(family,
                   "gaussian" = oemfit.big.gaussian(x@address, 
@@ -281,6 +323,7 @@ big.oem <- function(x,
                                                    lambda.min.ratio,
                                                    alpha,
                                                    gamma,
+                                                   tau,
                                                    penalty.factor,
                                                    standardize,
                                                    intercept,
@@ -299,6 +342,7 @@ big.oem <- function(x,
                                                    lambda.min.ratio,
                                                    alpha,
                                                    gamma,
+                                                   tau,
                                                    penalty.factor,
                                                    standardize,
                                                    intercept,
@@ -312,8 +356,10 @@ big.oem <- function(x,
         rownames(res$beta[[i]]) <- c("(Intercept)", varnames)
     }
     
+    names(res$beta) <- penalty
+    
     nz <- lapply(1:length(res$beta), function(m) 
-        sapply(predict.oem(res, type = "nonzero", which.model = m), length) - 1
+        sapply(predict.oem(res, type = "nonzero", which.model = m), length)
     )
     
     res$nobs     <- n
@@ -341,6 +387,7 @@ oemfit.big.gaussian <- function(x,
                                 lambda.min.ratio,
                                 alpha,
                                 gamma,
+                                tau,
                                 penalty.factor,
                                 standardize,
                                 intercept,
@@ -360,6 +407,7 @@ oemfit.big.gaussian <- function(x,
                  lambda.min.ratio,
                  alpha,
                  gamma,
+                 tau,
                  penalty.factor,
                  standardize,
                  intercept,
@@ -384,6 +432,7 @@ oemfit.big.binomial <- function(x,
                                 lambda.min.ratio,
                                 alpha,
                                 gamma,
+                                tau,
                                 penalty.factor,
                                 standardize,
                                 intercept,
@@ -403,6 +452,7 @@ oemfit.big.binomial <- function(x,
                  lambda.min.ratio,
                  alpha,
                  gamma,
+                 tau,
                  penalty.factor,
                  standardize,
                  intercept,

@@ -1,12 +1,33 @@
 
 #' Orthogonalizing EM
 #'
-#' @param x input matrix or \code{CsparseMatrix} object of the \pkg{Matrix} package. 
-#' Each row is an observation, each column corresponds to a covariate
+#' @param x input matrix of dimension n x p or \code{CsparseMatrix} object of the \pkg{Matrix} package. 
+#' Each row is an observation, each column corresponds to a covariate. The oem() function
+#' is optimized for n >> p settings and may be very slow when p > n, so please use other packages
+#' such as \code{glmnet}, \code{ncvreg}, \code{grpreg}, or \code{gglasso} when p > n or p approx n.
 #' @param y numeric response vector of length \code{nobs}.
 #' @param family \code{"gaussian"} for least squares problems, \code{"binomial"} for binary response. 
-#' @param penalty Specification of penalty type. Choices include \code{"lasso"}, 
-#' \code{"ols"} (Ordinary least squares, no penaly), \code{"elastic.net"}, \code{"scad"}, \code{"mcp"}, \code{"grp.lasso"}
+#' @param penalty Specification of penalty type. Choices include:
+#' \itemize{
+#'    \item{\code{"elastic.net"}}{ - elastic net penalty, extra parameters: \code{"alpha"}}
+#'    \item{\code{"lasso"}}{ - lasso penalty}
+#'    \item{\code{"ols"}}{ - ordinary least squares}
+#'    \item{\code{"mcp"}}{ - minimax concave penalty, extra parameters: \code{"gamma"}}
+#'    \item{\code{"scad"}}{ - smoothly clipped absolute deviation, extra parameters: \code{"gamma"}}
+#'    \item{\code{"mcp.net"}}{ - minimax concave penalty + l2 penalty, extra parameters: 
+#'    \code{"gamma"}, \code{"alpha"}}
+#'    \item{\code{"scad.net"}}{ - smoothly clipped absolute deviation + l2 penalty, extra parameters: 
+#'    \code{"gamma"}, \code{"alpha"}}
+#'    \item{\code{"grp.lasso"}}{ - group lasso penalty}
+#'    \item{\code{"grp.lasso.net"}}{ - group lasso penalty + l2 penalty, extra parameters: \code{"alpha"}}
+#'    \item{\code{"grp.mcp"}}{ - group minimax concave penalty, extra parameters: \code{"gamma"}}
+#'    \item{\code{"grp.scad"}}{ - group smoothly clipped absolute deviation, extra parameters: \code{"gamma"}}
+#'    \item{\code{"grp.mcp.net"}}{ - group minimax concave penalty + l2 penalty, extra parameters: \code{"gamma"}, \code{"alpha"}}
+#'    \item{\code{"grp.scad.net"}}{ - group smoothly clipped absolute deviation + l2 penalty, extra parameters: \code{"gamma"}, \code{"alpha"}}
+#'    \item{\code{"sparse.grp.lasso"}}{ - sparse group lasso penalty (group lasso + lasso), extra parameters: \code{"tau"}}
+#' }
+#' Careful consideration is required for the group lasso, group MCP, and group SCAD penalties. Groups as specified by the \code{groups} argument 
+#' should be chosen in a sensible manner.
 #' @param weights observation weights. Not implemented yet. Defaults to 1 for each observation (setting weight vector to 
 #' length 0 will default all weights to 1)
 #' @param lambda A user supplied lambda sequence. By default, the program computes
@@ -19,8 +40,10 @@
 #' \code{nobs > nvars}, the default is 0.0001, close to zero. If \code{nobs < nvars}, the default
 #' is 0.01. A very small value of \code{lambda.min.ratio} will lead to a saturated fit
 #' when \code{nobs < nvars}.
-#' @param alpha mixing value for \code{elastic.net}. penalty applied is (1 - alpha) * (ridge penalty) + alpha * (lasso penalty)
+#' @param alpha mixing value for \code{elastic.net}, \code{mcp.net}, \code{scad.net}, \code{grp.mcp.net}, \code{grp.scad.net}. 
+#' penalty applied is ((1 - alpha)/alpha) * (ridge penalty) + (lasso/mcp/mcp/grp.lasso penalty)
 #' @param gamma tuning parameter for SCAD and MCP penalties. must be >= 1
+#' @param tau mixing value for \code{sparse.grp.lasso}. penalty applied is (1 - tau) * (group lasso penalty) + tau * (lasso penalty)
 #' @param groups A vector of describing the grouping of the coefficients. See the example below. All unpenalized variables
 #' should be put in group 0
 #' @param penalty.factor Separate penalty factors can be applied to each coefficient. 
@@ -67,12 +90,13 @@
 #' y <- rnorm(n.obs, sd = 3) + x %*% true.beta
 #' 
 #' fit <- oem(x = x, y = y, 
-#'            penalty = c("lasso", "grp.lasso"), 
+#'            penalty = c("lasso", "grp.lasso", "sparse.grp.lasso"), 
 #'            groups = rep(1:10, each = 5))
 #' 
-#' layout(matrix(1:2, ncol = 2))
+#' layout(matrix(1:3, ncol = 3))
 #' plot(fit)
 #' plot(fit, which.model = 2)
+#' plot(fit, which.model = "sparse.grp.lasso")
 #' 
 #' # the oem package has support for
 #' # sparse design matrices
@@ -98,11 +122,16 @@
 #' y <- rbinom(n.obs, 1, prob = 1 / (1 + exp(-x %*% true.beta)))
 #' 
 #' system.time(res <- oem(x, y, intercept = FALSE, 
-#'                        penalty = "lasso", 
+#'                        penalty = c("lasso", "sparse.grp.lasso", "mcp"), 
 #'                        family = "binomial", 
+#'                        groups = rep(1:10, each = 5),
 #'                        nlambda = 10,
 #'                        irls.tol = 1e-3, tol = 1e-8))
 #' 
+#' layout(matrix(1:3, ncol = 3))
+#' plot(res)
+#' plot(res, which.model = 2)
+#' plot(res, which.model = "mcp")
 #' 
 #' 
 #' # sparse design matrix
@@ -129,13 +158,22 @@
 oem <- function(x, 
                 y, 
                 family = c("gaussian", "binomial"),
-                penalty = c("elastic.net", "lasso", "ols", "mcp", "scad", "grp.lasso"),
+                penalty = c("elastic.net", 
+                            "lasso", 
+                            "ols", 
+                            "mcp",           "scad", 
+                            "mcp.net",       "scad.net",
+                            "grp.lasso",     "grp.lasso.net",
+                            "grp.mcp",       "grp.scad",
+                            "grp.mcp.net",   "grp.scad.net",
+                            "sparse.grp.lasso"),
                 weights = numeric(0),
                 lambda = numeric(0),
                 nlambda = 100L,
                 lambda.min.ratio = NULL,
                 alpha = 1,
                 gamma = 3,
+                tau   = 0.5,
                 groups = numeric(0),
                 penalty.factor = NULL,
                 group.weights = NULL,
@@ -148,15 +186,35 @@ oem <- function(x,
                 accelerate = FALSE,
                 ncores = -1,
                 compute.loss = FALSE,
-                hessian.type = c("full", "upper.bound")) 
+                hessian.type = c("upper.bound", "full")) 
 {
+    
+    this.call    <- match.call()
+    
     family       <- match.arg(family)
-    penalty      <- match.arg(penalty, several.ok = TRUE)
+    
+    ## don't default to fitting all penalties!
+    ## only allow multiple penalties if the user
+    ## explicitly chooses multiple penalties
+    if ("penalty" %in% names(this.call))
+    {
+        penalty  <- match.arg(penalty, several.ok = TRUE)
+    } else 
+    {
+        penalty  <- match.arg(penalty, several.ok = FALSE)
+    }
+    
     hessian.type <- match.arg(hessian.type)
     
     dims <- dim(x)
     n <- dims[1]
     p <- dims[2]
+    
+    if (p > n)
+    {
+        warning("oem() is optimized for n >> p settings and may be very slow when p > n")
+    }
+    
     y <- drop(y)
     y.vals <- unique(y)
     is.sparse <- FALSE
@@ -205,14 +263,16 @@ oem <- function(x,
     }
     
     
-    if (any(penalty == "grp.lasso")) {
+    if (any(grep("grp", penalty) > 0)) {
         if (length(groups) != p) {
-            stop("If grp.lasso is used groups must have same length as number of columns in x")
+            stop("If any group penalty is used groups must have same length as number of columns in x")
         }
         
         unique.groups <- sort(unique(groups))
-        zero.idx <- unique.groups[which(unique.groups == 0)]
-        groups <- drop(groups)
+        
+        ## index of '0' group
+        zero.idx      <- unique.groups[which(unique.groups == 0)]
+        groups        <- drop(groups)
         if (!is.null(group.weights))
         {
             
@@ -252,7 +312,8 @@ oem <- function(x,
         }
         
         
-        
+        ## the intercept is calculated implicitly
+        ## only for gaussian family
         if ((intercept & family != "gaussian") |
             (intercept & is.sparse))
         {
@@ -261,7 +322,8 @@ oem <- function(x,
         }
         
         
-    } else {
+    } else 
+    {
         unique.groups <- numeric(0)
         group.weights <- numeric(0)
     }
@@ -299,6 +361,7 @@ oem <- function(x,
     nlambda       <- as.integer(nlambda)
     alpha         <- as.double(alpha)
     gamma         <- as.double(gamma)
+    tau           <- as.double(tau)
     tol           <- as.double(tol)
     irls.tol      <- as.double(irls.tol)
     irls.maxit    <- as.integer(irls.maxit)
@@ -341,6 +404,7 @@ oem <- function(x,
                                                lambda.min.ratio,
                                                alpha,
                                                gamma,
+                                               tau,
                                                penalty.factor,
                                                standardize,
                                                intercept,
@@ -359,6 +423,7 @@ oem <- function(x,
                                                lambda.min.ratio,
                                                alpha,
                                                gamma,
+                                               tau,
                                                penalty.factor,
                                                standardize,
                                                intercept,
@@ -372,8 +437,10 @@ oem <- function(x,
         rownames(res$beta[[i]]) <- c("(Intercept)", varnames)
     }
     
+    names(res$beta) <- penalty
+    
     nz <- lapply(1:length(res$beta), function(m) 
-        sapply(predict.oem(res, type = "nonzero", which.model = m), length) - 1
+        sapply(predict.oem(res, type = "nonzero", which.model = m), length)
     )
     
     res$nobs     <- n
@@ -402,6 +469,7 @@ oemfit.gaussian <- function(is.sparse,
                             lambda.min.ratio,
                             alpha,
                             gamma,
+                            tau,
                             penalty.factor,
                             standardize,
                             intercept,
@@ -423,6 +491,7 @@ oemfit.gaussian <- function(is.sparse,
                      lambda.min.ratio,
                      alpha,
                      gamma,
+                     tau,
                      penalty.factor,
                      standardize,
                      intercept,
@@ -444,6 +513,7 @@ oemfit.gaussian <- function(is.sparse,
                      lambda.min.ratio,
                      alpha,
                      gamma,
+                     tau,
                      penalty.factor,
                      standardize,
                      intercept,
@@ -470,6 +540,7 @@ oemfit.binomial <- function(is.sparse,
                             lambda.min.ratio,
                             alpha,
                             gamma,
+                            tau,
                             penalty.factor,
                             standardize,
                             intercept,
@@ -491,6 +562,7 @@ oemfit.binomial <- function(is.sparse,
                      lambda.min.ratio,
                      alpha,
                      gamma,
+                     tau,
                      penalty.factor,
                      standardize,
                      intercept,
@@ -512,6 +584,7 @@ oemfit.binomial <- function(is.sparse,
                      lambda.min.ratio,
                      alpha,
                      gamma,
+                     tau,
                      penalty.factor,
                      standardize,
                      intercept,
