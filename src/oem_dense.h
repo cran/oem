@@ -528,8 +528,9 @@ protected:
             beta = u / d;
         } else if (penalty == "elastic.net")
         {
-            double denom = d + (1.0 - alpha) * lambda / alpha;
-            double lam = lambda;
+            double denom = d + (1.0 - alpha) * lambda;
+            double lam = lambda * alpha;
+            
             soft_threshold(beta, u, lam, penalty_factor, denom);
         } else if (penalty == "scad") 
         {
@@ -537,8 +538,15 @@ protected:
             
         } else if (penalty == "scad.net") 
         {
-            double denom = d + (1.0 - alpha) * lambda / alpha;
-            double lam = lambda;
+            double denom = d + (1.0 - alpha) * lambda;
+            double lam = lambda * alpha;
+            
+            if (alpha == 0)
+            {
+                lam   = 0;
+                denom = d + lambda;
+            }
+            
             soft_threshold_scad(beta, u, lam, penalty_factor, denom, gamma);
         
         } else if (penalty == "mcp") 
@@ -546,8 +554,9 @@ protected:
             soft_threshold_mcp(beta, u, lambda, penalty_factor, d, gamma);
         } else if (penalty == "mcp.net") 
         {
-            double denom = d + (1.0 - alpha) * lambda / alpha;
-            double lam = lambda;
+            double denom = d + (1.0 - alpha) * lambda;
+            double lam = lambda * alpha;
+
             soft_threshold_mcp(beta, u, lam, penalty_factor, denom, gamma);
             
         } else if (penalty == "grp.lasso")
@@ -557,11 +566,13 @@ protected:
                                  unique_groups, groups);
         } else if (penalty == "grp.lasso.net")
         {
-            double denom = d + (1.0 - alpha) * lambda / alpha;
-            double lam = lambda;
+            double denom = d + (1.0 - alpha) * lambda;
+            double lam = lambda * alpha;
+            
             block_soft_threshold(beta, u, lam, group_weights,
                                  denom, grp_idx, ngroups, 
                                  unique_groups, groups);
+            
         } else if (penalty == "grp.mcp")
         {
             block_soft_threshold_mcp(beta, u, lambda, group_weights,
@@ -574,15 +585,18 @@ protected:
                                       unique_groups, groups, gamma);
         } else if (penalty == "grp.mcp.net")
         {
-            double denom = d + (1.0 - alpha) * lambda / alpha;
-            double lam = lambda;
+            double denom = d + (1.0 - alpha) * lambda;
+            double lam = lambda * alpha;
+            
+            
             block_soft_threshold_mcp(beta, u, lam, group_weights,
                                      denom, grp_idx, ngroups, 
                                      unique_groups, groups, gamma);
         } else if (penalty == "grp.scad.net")
         {
-            double denom = d + (1.0 - alpha) * lambda / alpha;
-            double lam = lambda;
+            double denom = d + (1.0 - alpha) * lambda;
+            double lam = lambda * alpha;
+            
             block_soft_threshold_scad(beta, u, lam, group_weights,
                                       denom, grp_idx, ngroups, 
                                       unique_groups, groups, gamma);
@@ -604,7 +618,7 @@ protected:
                                  group_weights,
                                  d, grp_idx, ngroups, 
                                  unique_groups, groups);
-        } 
+        }
         
         
         

@@ -47,7 +47,7 @@
 #' depends on the sample size nobs relative to the number of variables nvars. If
 #' \code{nobs > nvars}, the default is 0.0001, close to zero. 
 #' @param alpha mixing value for \code{elastic.net}, \code{mcp.net}, \code{scad.net}, \code{grp.mcp.net}, \code{grp.scad.net}. 
-#' penalty applied is ((1 - alpha)/alpha) * (ridge penalty) + (lasso/mcp/mcp/grp.lasso penalty)
+#' penalty applied is (1 - alpha) * (ridge penalty) + alpha * (lasso/mcp/mcp/grp.lasso penalty)
 #' @param gamma tuning parameter for SCAD and MCP penalties. must be >= 1
 #' @param tau mixing value for \code{sparse.grp.lasso}. penalty applied is (1 - tau) * (group lasso penalty) + tau * (lasso penalty)
 #' @param groups A vector of describing the grouping of the coefficients. See the example below. All unpenalized variables
@@ -291,17 +291,49 @@ xval.oem <- function(x,
         stop("nlambda must be a positive integer")
     }
     
-    lambda <- sort(as.numeric(lambda), decreasing = TRUE)
-    
-
+    if (!is.list(lambda))
+    {
+        lambda <- sort(as.numeric(lambda), decreasing = TRUE)
+        
+        ## ensure is double type
+        if (length(lambda) > 0)
+        {
+            lambda    <- as.double(lambda)
+        }
+        
+        lambda <- rep(list(lambda), length(penalty))
+        
+    } else 
+    {
+        if (length(lambda) != length(penalty))
+        {
+            stop("If list of lambda vectors is provided, it must be 
+                 the same length as the number of penalties fit")
+        }
+        nlambda.tmp <- length(lambda[[1]])
+        for (l in 1:length(lambda))
+        {
+            
+            ## check to make sure all things in the list are actually vectors
+            if ( is.null(lambda[[l]]) || length(lambda[[l]]) < 1 )
+            {
+                stop("Provided lambda vector must have at least one value")
+            }
+            
+            if (length(lambda[[l]]) != nlambda.tmp)
+            {
+                stop("All provided lambda vectors must have same length")
+            }
+            
+            ## ensure is double type
+            lambda[[l]] <- as.double(sort(as.numeric(lambda[[l]]), decreasing = TRUE))
+            
+        }
+    }
         
     ##    ensure types are correct
     ##    before sending to c++
     
-    if (length(lambda) > 0)
-    {
-        lambda    <- as.double(lambda)
-    }
     foldid        <- as.integer(foldid)
     nfolds        <- as.integer(nfolds)
     groups        <- as.integer(groups)

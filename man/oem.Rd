@@ -64,7 +64,7 @@ is 0.01. A very small value of \code{lambda.min.ratio} will lead to a saturated 
 when \code{nobs < nvars}.}
 
 \item{alpha}{mixing value for \code{elastic.net}, \code{mcp.net}, \code{scad.net}, \code{grp.mcp.net}, \code{grp.scad.net}. 
-penalty applied is ((1 - alpha)/alpha) * (ridge penalty) + (lasso/mcp/mcp/grp.lasso penalty)}
+penalty applied is (1 - alpha) * (ridge penalty) + alpha * (lasso/mcp/mcp/grp.lasso penalty)}
 
 \item{gamma}{tuning parameter for SCAD and MCP penalties. must be >= 1}
 
@@ -146,11 +146,13 @@ x.dense <- as.matrix(xs)
 
 system.time(fit <- oem(x = x.dense, y = ys, 
                        penalty = c("lasso", "grp.lasso"), 
-                       groups = rep(1:20, each = 5), intercept = TRUE))
+                       groups = rep(1:20, each = 5), intercept = FALSE,
+                       standardize = FALSE))
 
 system.time(fits <- oem(x = xs, y = ys, 
                         penalty = c("lasso", "grp.lasso"), 
-                        groups = rep(1:20, each = 5), intercept = TRUE, lambda = fit$lambda))
+                        groups = rep(1:20, each = 5), intercept = FALSE, 
+                        standardize = FALSE, lambda = fit$lambda))
                         
 max(abs(fit$beta[[1]] - fits$beta[[1]]))
 max(abs(fit$beta[[2]] - fits$beta[[2]]))
@@ -197,4 +199,3 @@ max(abs(res.gr$beta[[1]] - res.gr.s$beta[[1]]))
 Shifeng Xiong, Bin Dai, Jared Huling, and Peter Z. G. Qian. Orthogonalizing
 EM: A design-based least squares algorithm. Technometrics, 58(3):285-293, 2016. \url{http://amstat.tandfonline.com/doi/abs/10.1080/00401706.2015.1054436}
 }
-
