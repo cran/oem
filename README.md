@@ -1,3 +1,9 @@
+---
+output:
+  html_document:
+    keep_md: yes
+    self_contained: true
+---
 
 [![version](http://www.r-pkg.org/badges/version/oem)](https://cran.r-project.org/package=oem)
 
@@ -67,8 +73,8 @@ microbenchmark(
 ```
 ## Unit: seconds
 ##           expr      min       lq     mean   median       uq      max neval
-##  glmnet[lasso] 7.441984 7.516914 7.557393 7.557205 7.607268 7.663593     5
-##     oem[lasso] 1.972346 1.981441 2.011556 1.983256 1.984705 2.136033     5
+##  glmnet[lasso] 8.454950 8.925667 9.183843 9.255825 9.351194 9.931580     5
+##     oem[lasso] 2.456566 2.640007 2.754852 2.881469 2.884303 2.911914     5
 ```
 
 ```r
@@ -81,11 +87,12 @@ max(abs(coef(res1) - res2$beta[[1]]))
 ```
 
 ```r
-res1 <- glmnet(x, y, thresh = 1e-12, # thresh must be very low for glmnet to be accurate
-                                      standardize = FALSE,
-                                      intercept = TRUE,
-                                      lambda = lambdas)
+res1 <- glmnet(x, y, thresh = 1e-12, 
+               standardize = FALSE,
+               intercept = TRUE,
+               lambda = lambdas)
 
+# answers are now more close once we require more precise glmnet solutions
 max(abs(coef(res1) - res2$beta[[1]]))
 ```
 
@@ -160,25 +167,37 @@ microbenchmark(
 )
 ```
 
+```
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+## Warning message: some lam not reached by the plus path and dropped
+```
 
 ```
 ## Unit: milliseconds
-##            expr       min        lq      mean    median        uq
-##  sparsenet[mcp] 1770.7480 1805.7322 1869.5562 1851.2909 1897.7480
-##        oem[mcp]  155.7779  157.1737  157.7012  158.2347  158.4791
-##     ncvreg[mcp] 7113.0889 7148.7115 7322.1983 7166.6196 7315.6137
-##       plus[mcp] 1612.1931 1632.7685 1709.5157 1678.3785 1764.2566
-##       oem[scad]  132.7268  133.0813  134.3816  134.6030  134.9752
-##    ncvreg[scad] 7480.6702 7508.0669 7596.8968 7535.5959 7574.6581
-##      plus[scad] 1782.6602 1785.3546 1969.5278 1874.2982 2095.9051
-##        max neval
-##  2022.2617     5
-##   158.8407     5
-##  7866.9578     5
-##  1859.9821     5
-##   136.5218     5
-##  7885.4928     5
-##  2309.4208     5
+##            expr       min        lq      mean    median         uq
+##  sparsenet[mcp] 2320.8100 2352.9517 2458.7722 2392.4679  2517.0486
+##        oem[mcp]  189.3625  212.6236  233.1697  226.6125   267.3957
+##     ncvreg[mcp] 8129.6092 8555.1828 9115.0166 8886.1990  9958.1984
+##       plus[mcp] 2099.2994 2500.4747 2554.6303 2589.2470  2756.9943
+##       oem[scad]  137.4814  139.5355  184.2794  187.5250   220.8466
+##    ncvreg[scad] 8808.6070 9585.5057 9916.8835 9804.8729 10375.9077
+##      plus[scad] 2304.6635 2496.2100 2617.9396 2539.4899  2831.3368
+##         max neval
+##   2710.5826     5
+##    269.8545     5
+##  10045.8938     5
+##   2827.1361     5
+##    236.0083     5
+##  11009.5241     5
+##   2917.9977     5
 ```
 
 ```r
@@ -211,7 +230,7 @@ library(grpreg)
 library(grplasso)
 # compute the full solution path, n > p
 set.seed(123)
-n <- 5000
+n <- 10000
 p <- 200
 m <- 25
 b <- matrix(c(runif(m, -0.5, 0.5), rep(0, p - m)))
@@ -250,16 +269,16 @@ microbenchmark(
 
 ```
 ## Unit: milliseconds
-##                 expr       min        lq       mean     median         uq
-##   gglasso[grp.lasso] 1878.0888 1878.4255 1907.79330 1887.57500 1903.50004
-##       oem[grp.lasso]   83.7454   84.9888   85.94121   85.87616   86.13313
-##  grplasso[grp.lasso] 4357.3873 4387.2949 4518.83527 4414.99837 4710.61381
-##    grpreg[grp.lasso] 1104.2351 1110.6527 1160.32216 1114.22221 1127.73386
+##                 expr       min        lq     mean    median        uq
+##   gglasso[grp.lasso] 4004.4774 4086.1746 4108.586 4103.6553 4126.2035
+##       oem[grp.lasso]  112.8335  114.3252  125.083  118.6199  120.8217
+##  grplasso[grp.lasso] 7816.4330 8224.7857 9044.954 8851.7595 9250.1811
+##    grpreg[grp.lasso] 2253.6705 2319.5918 2431.038 2379.3103 2565.8449
 ##         max neval
-##  1991.37710     5
-##    88.96256     5
-##  4723.88191     5
-##  1344.76699     5
+##   4222.4212     5
+##    158.8146     5
+##  11081.6107     5
+##   2636.7702     5
 ```
 
 ```r
@@ -272,8 +291,8 @@ diffs
 
 ```
 ##                      abs diff
-## oem and gglasso  1.729379e-06
-## oem and grplasso 4.828369e-08
+## oem and gglasso  1.303906e-06
+## oem and grplasso 1.645871e-08
 ```
 
 #### Bigger Group Lasso Example
@@ -289,46 +308,19 @@ x <- matrix(rnorm(n * p, sd = 3), n, p)
 y <- drop(x %*% b) + rnorm(n)
 groups <- rep(1:floor(p/10), each = 10)
 
-system.time(res <- oem(x, y, penalty = "grp.lasso",
-                       groups = groups,
-                       standardize = TRUE,
-                       intercept = TRUE,
-                       nlambda = 100, tol = 1e-10))
+grp.penalties <- c("grp.lasso", "grp.mcp", "grp.scad", 
+                   "grp.mcp.net", "grp.scad.net",
+                   "sparse.group.lasso")
+system.time(res <- oem(x, y, 
+                       penalty = grp.penalties,
+                       groups  = groups,
+                       alpha   = 0.25, # mixing param for l2 penalties
+                       tau     = 0.5)) # mixing param for sparse grp lasso 
 ```
 
 ```
 ##    user  system elapsed 
-##    2.99    0.22    3.26
-```
-
-```r
-# memory usage is out of control here.
-# oem uses approximately 1/3 of the memory
-system.time(res2 <- grpreg(x, y, group = groups, 
-                           eps = 1e-10, lambda = res$lambda[[1]]))
-```
-
-```
-##    user  system elapsed 
-##   65.59    1.46   67.91
-```
-
-```r
-# I think the standardization is done
-# differently for grpreg
-max(abs(res$beta[[1]] - res2$beta))
-```
-
-```
-## [1] 0.0007842304
-```
-
-```r
-mean(abs(res$beta[[1]] - res2$beta))
-```
-
-```
-## [1] 8.363514e-06
+##    3.62    0.17    4.03
 ```
 
 ### Fitting Multiple Penalties
@@ -352,8 +344,13 @@ microbenchmark(
                                    standardize = TRUE,
                                    tol = 1e-10)},
     "oem[lasso/mcp/scad/ols]"    = {res2 <- oem(x, y,
-                                   penalty = c("elastic.net", "mcp", "scad", "grp.lasso"),
+                                   penalty = c("elastic.net", "mcp", 
+                                               "scad", "grp.lasso", 
+                                               "grp.mcp", "sparse.grp.lasso",
+                                               "grp.mcp.net", "mcp.net"),
                                    gamma = 4,
+                                   tau = 0.5,
+                                   alpha = 0.25,
                                    groups = rep(1:10, each = 10),
                                    intercept = TRUE, 
                                    standardize = TRUE,
@@ -365,11 +362,11 @@ microbenchmark(
 ```
 ## Unit: milliseconds
 ##                     expr      min       lq     mean   median       uq
-##               oem[lasso] 211.9786 212.5340 214.4036 213.6061 215.9812
-##  oem[lasso/mcp/scad/ols] 228.7243 231.1298 234.7131 231.8281 234.1716
+##               oem[lasso] 213.7904 219.6538 226.4532 219.8930 237.8327
+##  oem[lasso/mcp/scad/ols] 259.2121 260.7772 267.5143 268.8317 271.7456
 ##       max neval
-##  217.9181     5
-##  247.7116     5
+##  241.0959     5
+##  277.0047     5
 ```
 
 ```r
@@ -381,9 +378,9 @@ plot(res2, which.model = 1, lwd = 2,
      xvar = "lambda")
 plot(res2, which.model = 2, lwd = 2,
      xvar = "lambda")
-plot(res2, which.model = 3, lwd = 2,
-     xvar = "lambda")
 plot(res2, which.model = 4, lwd = 2,
+     xvar = "lambda")
+plot(res2, which.model = 7, lwd = 2,
      xvar = "lambda")
 ```
 
