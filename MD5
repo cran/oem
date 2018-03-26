@@ -1,4 +1,4 @@
-f2bb21056e7421fc9c5a19cd0999bcbc *DESCRIPTION
+05ba62d26588dc2f79714578c7e8943f *DESCRIPTION
 55311235738c413159037b01f094281b *NAMESPACE
 876d8932d63759560a7b08ed0a04a3d9 *R/big_oem.R
 d2e644c88ae3b6f0ca260f9483e3f096 *R/cv_oem.R
@@ -8,11 +8,12 @@ d2e644c88ae3b6f0ca260f9483e3f096 *R/cv_oem.R
 cf07c645b58e041735e6bcb01c4932ce *R/oem_xtx.R
 826450b7ff3990f81d6864fc90b99f4d *R/oem_xval.R
 e0891e12396861e8332263aee7ee22d2 *R/utils.R
-2a7472ded30e223552ee6b310ee02008 *README.md
+d7a479e6bbb1bffaedf9d24c015f901f *README.md
 82a4421c6fedb7c7a8f2a11813ce130a *build/vignette.rds
+d9ce96bdceeb2da940aec18f64a352a5 *inst/CITATION
 90dd3b82d17ab1304c6e19e3db46fe58 *inst/doc/oem_vignette.R
-2c95d05d963e0c8245f4acb68810434e *inst/doc/oem_vignette.Rmd
-30ce107510b135b57c03a6b2055f5326 *inst/doc/oem_vignette.html
+d1d31aca6ec81a993f562cc63e306cfb *inst/doc/oem_vignette.Rmd
+127192cd239b871d00b5fbbfe5277acd *inst/doc/oem_vignette.html
 c6da5eeee049ec43a4d234303e00f405 *man/big.oem.Rd
 4f18b7ae912d9507461c87bd9bd4e056 *man/cv.oem.Rd
 2c752e991a50d509eafd1e842827426a *man/deprecated.Rd
@@ -75,6 +76,6 @@ ba107361e1f90bc792ab0f13044bfcc5 *src/oem_xval_dense.h
 6f0656e423f0bb6855b127a6cd4c78c0 *src/utils.cpp
 871fed3d24eae3d8b12ac4da39530179 *src/utils.h
 8a463f37be3c7d3c844793d958823788 *vignettes/The_oem_Package.pdf
-98702781133ccbdea81389db503e6f71 *vignettes/mult-1.png
+4e28a3f75499529b587db91f376b3ee9 *vignettes/mult-1.png
 2b75bbe7a7bed88c457cc1f3236eb976 *vignettes/oem.css
-2c95d05d963e0c8245f4acb68810434e *vignettes/oem_vignette.Rmd
+d1d31aca6ec81a993f562cc63e306cfb *vignettes/oem_vignette.Rmd
