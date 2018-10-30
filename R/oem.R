@@ -209,12 +209,23 @@ oem <- function(x,
     hessian.type <- match.arg(hessian.type)
     
     dims <- dim(x)
+    
+    if (is.null(dims))
+    {
+        stop("x must have at least two columns")
+    }
+    
     n <- dims[1]
     p <- dims[2]
     
     if (p > n)
     {
         warning("oem() is optimized for n >> p settings and may be very slow when p > n")
+    }
+    
+    if (p < 2)
+    {
+        stop("x must have at least two columns")
     }
     
     y <- drop(y)
