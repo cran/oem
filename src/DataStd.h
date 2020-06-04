@@ -149,6 +149,10 @@ public:
                 for(int i = 0; i < p; i++)
                 {
                     scaleX[i] = sd_n((X.col(i).array() * wts.array().sqrt()).matrix() );
+                    if (scaleX[i] == 0.0)
+                    {
+                        scaleX[i] = 1.0;
+                    }
                     X.col(i).array() *= (1.0 / scaleX[i]);
                 }
                 break;
@@ -172,14 +176,22 @@ public:
                     get_ss_avx<double>(begin, n, s, ss);
                     meanX[i] = s / n;
                     scaleX[i] = std::sqrt(ss - s * s / n) * n_invsqrt;
+                    if (scaleX[i] == 0.0)
+                    {
+                        scaleX[i] = 1.0;
+                    }
                     standardize_vec_avx<double>(begin, n, meanX[i], 1.0 / scaleX[i]);
 #else
-                    double *begin = &X(0, i);
-                    double *end = begin + n;
-                    meanX[i] = (X.col(i).array() * wts.array()).matrix().mean();
-                    std::transform(begin, end, begin, std::bind2nd(std::minus<double>(), meanX[i]));
-                    scaleX[i] = (X.col(i).array() * wts.array()).matrix().norm() * n_invsqrt;
-                    std::transform(begin, end, begin, std::bind2nd(std::multiplies<double>(), 1.0 / scaleX[i]));
+                    // double *begin = &X(0, i);
+                    // double *end = begin + n;
+                    // meanX[i] = (X.col(i).array() * wts.array()).matrix().mean();
+                    // std::transform(begin, end, begin, std::bind2nd(std::minus<double>(), meanX[i]));
+                    // scaleX[i] = (X.col(i).array() * wts.array()).matrix().norm() * n_invsqrt;
+                    // std::transform(begin, end, begin, std::bind2nd(std::multiplies<double>(), 1.0 / scaleX[i]));
+                    meanX[i] = X.col(i).mean();
+                    X.col(i).array() -= meanX[i];
+                    scaleX[i] = X.col(i).norm() * n_invsqrt;
+                    X.col(i).array() /= scaleX[i];
 #endif
                 }
                 break;
@@ -194,6 +206,10 @@ public:
                     for(int i = 0; i < p; i++)
                     {
                         scaleX[i] = sd_n(X.col(i));
+                        if (scaleX[i] == 0.0)
+                        {
+                            scaleX[i] = 1.0;
+                        }
                         X.col(i).array() *= (1.0 / scaleX[i]);
                     }
                     break;
@@ -217,14 +233,30 @@ public:
                         get_ss_avx<double>(begin, n, s, ss);
                         meanX[i] = s / n;
                         scaleX[i] = std::sqrt(ss - s * s / n) * n_invsqrt;
+                        if (scaleX[i] == 0.0)
+                        {
+                            scaleX[i] = 1.0;
+                        }
                         standardize_vec_avx<double>(begin, n, meanX[i], 1.0 / scaleX[i]);
         #else
-                        double *begin = &X(0, i);
-                        double *end = begin + n;
+                        // double *begin = &X(0, i);
+                        // double *end = begin + n;
+                        // meanX[i] = X.col(i).mean();
+                        // std::transform(begin, end, begin, std::bind2nd(std::minus<double>(), meanX[i]));
+                        // scaleX[i] = X.col(i).norm() * n_invsqrt;
+                        // if (scaleX[i] == 0.0)
+                        // {
+                        //     scaleX[i] = 1.0;
+                        // }
+                        // std::transform(begin, end, begin, std::bind2nd(std::multiplies<double>(), 1.0 / scaleX[i]));
                         meanX[i] = X.col(i).mean();
-                        std::transform(begin, end, begin, std::bind2nd(std::minus<double>(), meanX[i]));
+                        X.col(i).array() -= meanX[i];
                         scaleX[i] = X.col(i).norm() * n_invsqrt;
-                        std::transform(begin, end, begin, std::bind2nd(std::multiplies<double>(), 1.0 / scaleX[i]));
+                        if (scaleX[i] == 0.0)
+                        {
+                            scaleX[i] = 1.0;
+                        }
+                        X.col(i).array() /= scaleX[i];
         #endif
                     }
                     break;
