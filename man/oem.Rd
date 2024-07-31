@@ -45,22 +45,22 @@ such as \code{glmnet}, \code{ncvreg}, \code{grpreg}, or \code{gglasso} when p > 
 
 \item{penalty}{Specification of penalty type. Choices include:
 \itemize{
-   \item{\code{"elastic.net"}}{ - elastic net penalty, extra parameters: \code{"alpha"}}
-   \item{\code{"lasso"}}{ - lasso penalty}
-   \item{\code{"ols"}}{ - ordinary least squares}
-   \item{\code{"mcp"}}{ - minimax concave penalty, extra parameters: \code{"gamma"}}
-   \item{\code{"scad"}}{ - smoothly clipped absolute deviation, extra parameters: \code{"gamma"}}
-   \item{\code{"mcp.net"}}{ - minimax concave penalty + l2 penalty, extra parameters: 
-   \code{"gamma"}, \code{"alpha"}}
-   \item{\code{"scad.net"}}{ - smoothly clipped absolute deviation + l2 penalty, extra parameters: 
-   \code{"gamma"}, \code{"alpha"}}
-   \item{\code{"grp.lasso"}}{ - group lasso penalty}
-   \item{\code{"grp.lasso.net"}}{ - group lasso penalty + l2 penalty, extra parameters: \code{"alpha"}}
-   \item{\code{"grp.mcp"}}{ - group minimax concave penalty, extra parameters: \code{"gamma"}}
-   \item{\code{"grp.scad"}}{ - group smoothly clipped absolute deviation, extra parameters: \code{"gamma"}}
-   \item{\code{"grp.mcp.net"}}{ - group minimax concave penalty + l2 penalty, extra parameters: \code{"gamma"}, \code{"alpha"}}
-   \item{\code{"grp.scad.net"}}{ - group smoothly clipped absolute deviation + l2 penalty, extra parameters: \code{"gamma"}, \code{"alpha"}}
-   \item{\code{"sparse.grp.lasso"}}{ - sparse group lasso penalty (group lasso + lasso), extra parameters: \code{"tau"}}
+   \item \code{"elastic.net"} - elastic net penalty, extra parameters: \code{"alpha"}
+   \item \code{"lasso"} - lasso penalty
+   \item \code{"ols"} - ordinary least squares
+   \item \code{"mcp"} - minimax concave penalty, extra parameters: \code{"gamma"}
+   \item \code{"scad"} - smoothly clipped absolute deviation, extra parameters: \code{"gamma"}
+   \item \code{"mcp.net"} - minimax concave penalty + l2 penalty, extra parameters: 
+   \code{"gamma"}, \code{"alpha"}
+   \item \code{"scad.net"} - smoothly clipped absolute deviation + l2 penalty, extra parameters: 
+   \code{"gamma"}, \code{"alpha"}
+   \item \code{"grp.lasso"} - group lasso penalty
+   \item \code{"grp.lasso.net"} - group lasso penalty + l2 penalty, extra parameters: \code{"alpha"}
+   \item \code{"grp.mcp"} - group minimax concave penalty, extra parameters: \code{"gamma"}
+   \item \code{"grp.scad"} - group smoothly clipped absolute deviation, extra parameters: \code{"gamma"}
+   \item \code{"grp.mcp.net"} - group minimax concave penalty + l2 penalty, extra parameters: \code{"gamma"}, \code{"alpha"}
+   \item \code{"grp.scad.net"} - group smoothly clipped absolute deviation + l2 penalty, extra parameters: \code{"gamma"}, \code{"alpha"}
+   \item \code{"sparse.grp.lasso"} - sparse group lasso penalty (group lasso + lasso), extra parameters: \code{"tau"}
 }
 Careful consideration is required for the group lasso, group MCP, and group SCAD penalties. Groups as specified by the \code{groups} argument 
 should be chosen in a sensible manner.}
@@ -215,7 +215,7 @@ max(abs(res.gr$beta[[1]] - res.gr.s$beta[[1]]))
 }
 \references{
 Shifeng Xiong, Bin Dai, Jared Huling, and Peter Z. G. Qian. Orthogonalizing
-EM: A design-based least squares algorithm. Technometrics, 58(3):285-293, 2016. \url{https://amstat.tandfonline.com/doi/abs/10.1080/00401706.2015.1054436}
+EM: A design-based least squares algorithm. Technometrics, 58(3):285-293, 2016. \doi{10.1080/00401706.2015.1054436}
 
 Huling. J.D. and Chien, P. (2022), Fast Penalized Regression and Cross Validation for Tall Data with the oem Package.
 Journal of Statistical Software 104(6), 1-24. doi:10.18637/jss.v104.i06

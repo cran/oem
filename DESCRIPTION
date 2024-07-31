@@ -1,7 +1,7 @@
 Package: oem
 Type: Package
 Title: Orthogonalizing EM: Penalized Regression for Big Tall Data
-Version: 2.0.11
+Version: 2.0.12
 Authors@R: c(
     person("Bin", "Dai", , "bdai@uwalumni.com", role = c("aut")),
     person("Jared", "Huling", , "jaredhuling@gmail.com", c("aut", "cre"),
@@ -26,16 +26,17 @@ License: GPL (>= 2)
 Encoding: UTF-8
 Depends: R (>= 3.2.0), bigmemory
 Imports: Rcpp (>= 0.11.0), Matrix, foreach, methods
-LinkingTo: Rcpp, RcppEigen, BH, bigmemory, RcppArmadillo
-RoxygenNote: 7.2.0
+LinkingTo: Rcpp, RcppEigen, BH, RSpectra (>= 0.16-2), bigmemory,
+        RcppArmadillo
+RoxygenNote: 7.3.1
 Suggests: knitr, rmarkdown
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2022-10-12 14:11:31 UTC; huling
+Packaged: 2024-07-31 03:44:20 UTC; huling
 Author: Bin Dai [aut],
   Jared Huling [aut, cre] (<https://orcid.org/0000-0003-0670-4845>),
   Yixuan Qiu [ctb],
   Gael Guennebaud [cph],
   Jitse Niesen [cph]
 Repository: CRAN
-Date/Publication: 2022-10-13 08:20:08 UTC
+Date/Publication: 2024-07-31 11:30:06 UTC

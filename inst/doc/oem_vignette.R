@@ -1,40 +1,40 @@
-## ---- echo=FALSE, message = FALSE, cache=FALSE--------------------------------
+## ----echo=FALSE, message = FALSE, cache=FALSE---------------------------------
 # install.packages("oem", repos = "http://cran.us.r-project.org")
 
-## ---- message = FALSE, cache=FALSE, eval = FALSE------------------------------
+## ----message = FALSE, cache=FALSE, eval = FALSE-------------------------------
 #  install.packages("devtools", repos = "http://cran.us.r-project.org")
 
-## ---- message = FALSE, cache=FALSE, eval=FALSE--------------------------------
+## ----message = FALSE, cache=FALSE, eval=FALSE---------------------------------
 #  library(devtools)
 #  install_github("jaredhuling/oem")
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 library(oem)
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 nobs  <- 1e4
 nvars <- 100
 x <- matrix(rnorm(nobs * nvars), ncol = nvars)
 y <- drop(x %*% c(0.5, 0.5, -0.5, -0.5, 1, rep(0, nvars - 5))) + rnorm(nobs, sd = 4)
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 fit1 <- oem(x = x, y = y, penalty = "lasso")
 
-## ---- fig.show='hold', fig.width = 7.15, fig.height = 5-----------------------
+## ----fig.show='hold', fig.width = 7.15, fig.height = 5------------------------
 plot(fit1)
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 fit2 <- oem(x = x, y = y, penalty = c("lasso", "mcp", "grp.lasso", "grp.mcp"),
             groups = rep(1:20, each = 5))
 
-## ---- fig.show='hold', fig.width = 7.15, fig.height = 10----------------------
+## ----fig.show='hold', fig.width = 7.15, fig.height = 10-----------------------
 layout(matrix(1:4, ncol = 2))
 plot(fit2, which.model = 1, xvar = "lambda")
 plot(fit2, which.model = 2, xvar = "lambda")
 plot(fit2, which.model = 3, xvar = "lambda")
 plot(fit2, which.model = "grp.mcp", xvar = "lambda")
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 nobs  <- 1e5
 nvars <- 100
 x2 <- matrix(rnorm(nobs * nvars), ncol = nvars)
@@ -53,7 +53,7 @@ system.time(fit2c <- oem(x = x2, y = y2,
                                      "grp.scad", "sparse.grp.lasso"),
                          groups = rep(1:20, each = 5), nlambda = 500L))
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 nobs  <- 5e4
 nvars <- 100
 x2 <- matrix(rnorm(nobs * nvars), ncol = nvars)
@@ -69,7 +69,7 @@ system.time(fit2b <- oem(x = x2, y = y2, penalty = c("grp.lasso", "lasso", "mcp"
                          groups = rep(1:20, each = 5), nlambda = 100L))
 
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 system.time(cvfit1 <- cv.oem(x = x, y = y, 
                              penalty = c("lasso", "mcp", 
                                          "grp.lasso", "grp.mcp"), 
@@ -77,14 +77,14 @@ system.time(cvfit1 <- cv.oem(x = x, y = y,
                              groups = rep(1:20, each = 5), 
                              nfolds = 10))
 
-## ---- fig.show='hold', fig.width = 7.15, fig.height = 7.5---------------------
+## ----fig.show='hold', fig.width = 7.15, fig.height = 7.5----------------------
 layout(matrix(1:4, ncol = 2))
 plot(cvfit1, which.model = 1)
 plot(cvfit1, which.model = 2)
 plot(cvfit1, which.model = 3)
 plot(cvfit1, which.model = 4)
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 
 nobsc  <- 1e5
 nvarsc <- 100
@@ -106,14 +106,14 @@ system.time(xvalfit2 <- xval.oem(x = xc, y = yc, penalty = "lasso",
 system.time(ofit1 <- oem(x = xc, y = yc, penalty = "lasso",
                          groups = rep(1:20, each = 5)))
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 nobs  <- 2e3
 nvars <- 20
 x <- matrix(runif(nobs * nvars, max = 2), ncol = nvars)
 
 y <- rbinom(nobs, 1, prob = 1 / (1 + exp(-drop(x %*% c(0.25, -1, -1, -0.5, -0.5, -0.25, rep(0, nvars - 6))))))
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 cvfit2 <- cv.oem(x = x, y = y, penalty = c("lasso", "mcp", 
                                            "grp.lasso", "grp.mcp"), 
                  family = "binomial",
@@ -122,7 +122,7 @@ cvfit2 <- cv.oem(x = x, y = y, penalty = c("lasso", "mcp",
                  groups = rep(1:10, each = 2), 
                  nfolds = 10, standardize = FALSE)
 
-## ---- echo = FALSE, fig.show='hold', fig.width = 7.15, fig.height = 7.5-------
+## ----echo = FALSE, fig.show='hold', fig.width = 7.15, fig.height = 7.5--------
 yrng <- range(c(unlist(cvfit2$cvup), unlist(cvfit2$cvlo)))
 layout(matrix(1:4, ncol = 2))
 plot(cvfit2, which.model = 1, ylim = yrng)
@@ -133,7 +133,7 @@ plot(cvfit2, which.model = "grp.mcp", ylim = yrng)
 ## -----------------------------------------------------------------------------
 mean(y)
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 cvfit2 <- cv.oem(x = x, y = y, penalty = c("lasso", "mcp", 
                                            "grp.lasso", "grp.mcp"), 
                  family = "binomial",
@@ -142,7 +142,7 @@ cvfit2 <- cv.oem(x = x, y = y, penalty = c("lasso", "mcp",
                  groups = rep(1:10, each = 2), 
                  nfolds = 10, standardize = FALSE)
 
-## ---- echo = FALSE, fig.show='hold', fig.width = 7.15, fig.height = 7.5-------
+## ----echo = FALSE, fig.show='hold', fig.width = 7.15, fig.height = 7.5--------
 yrng <- range(c(unlist(cvfit2$cvup), unlist(cvfit2$cvlo)))
 layout(matrix(1:4, ncol = 2))
 plot(cvfit2, which.model = 1, ylim = yrng)
@@ -150,7 +150,7 @@ plot(cvfit2, which.model = 2, ylim = yrng)
 plot(cvfit2, which.model = 3, ylim = yrng)
 plot(cvfit2, which.model = "grp.mcp", ylim = yrng)
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 xtx <- crossprod(xc) / nrow(xc)
 xty <- crossprod(xc, yc) / nrow(xc)
 
@@ -174,7 +174,7 @@ fit.xtx.s <- oem.xtx(xtx = xtx, xty = xty,
                      groups = rep(1:20, each = 5))  
 
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 set.seed(123)
 nrows <- 50000
 ncols <- 100
@@ -205,7 +205,7 @@ fit2 <- oem(x = bigmat[,], y = yb,
 max(abs(fit$beta[[1]] - fit2$beta[[1]]))            
 
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 
 nobsc  <- 1e5
 nvarsc <- 500
@@ -224,7 +224,7 @@ system.time(fitp <- oem(x = xc, y = yc,
                         groups = rep(1:20, each = 25), ncores = 2))
 
 
-## ---- message = FALSE, cache=FALSE--------------------------------------------
+## ----message = FALSE, cache=FALSE---------------------------------------------
 
 nobs  <- 1e4
 nvars <- 102
@@ -249,7 +249,7 @@ fit.adaptive.grp <- oem(x = x, y = y, penalty = c("grp.lasso"),
                         lambda = lams)
 
 
-## ---- echo = FALSE, fig.show='hold', fig.width = 7.15, fig.height = 4.25------
+## ----echo = FALSE, fig.show='hold', fig.width = 7.15, fig.height = 4.25-------
 layout(matrix(1:2, ncol = 2))
 plot(fit.adaptive)
 plot(fit.adaptive.grp)
